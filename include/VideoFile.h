@@ -1,6 +1,6 @@
 
-#ifndef __VIDEO_SOURCE_HEADER__
-#define __VIDEO_FILE_HEADER__
+#ifndef __WW_VIDEO_SOURCE_HEADER__
+#define __WW_VIDEO_FILE_HEADER__
 
 
 #include "VideoSource.h"

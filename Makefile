@@ -1,7 +1,7 @@
 
 
 INCLUDE_DIR = -Iinclude
-LIBS = -lGL -lGLU -lglut
+LIBS = -lGL -lGLU -lglut -lpthread
 FLAGS = -g
 SRCS=$(wildcard  src/*.cpp)
 OBJS=$(SRCS:%.cpp=%.o)
@@ -18,3 +18,10 @@ $(OBJS) : %.o : %.cpp
 
 clean:
 	rm -f $(OBJS) $(TARGET)
+	
+run:
+	./$(TARGET)
+	
+	
+debug:
+	gdb ./$(TARGET)
