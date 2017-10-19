@@ -8,8 +8,13 @@ namespace ww {
 
 struct Camera {
 
-	double pos[3];
+	Camera() : radius(10) {
+	
+	}
 
+	double pos[3];
+	double rotation[3];
+	double radius;
 };
 
 

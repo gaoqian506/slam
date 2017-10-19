@@ -6,6 +6,8 @@
 
 #include "ViewContent.h"
 #include "VideoSource.h"
+#include "Camera.h"
+#include "Rectangle.h"
 #include <pthread.h>
 
 namespace ww {
@@ -25,10 +27,14 @@ public:
 	void draw_cameras();
 	void draw_points();
 	void draw_mesh();
+	void draw_camera_instance(Camera* camera);
 	
 	virtual void display_with(ViewContent* cv);
 	
 private:
+
+	Rectangle get_scene_bounding_box(Camera** cameras, int count);
+
 	ViewContent* m_content;
 	pthread_t m_thread_id;
 

@@ -1,8 +1,11 @@
 
 
 #include "View.h"
+#include "GlToolbox.h"
+#include "SpaceToolbox.h"
 #include <GL/glut.h>
 #include <iostream>
+#include <vector>
 
 
 namespace ww {
@@ -58,6 +61,11 @@ void View::run() {
 
 void View::display() {
 
+	std::cout << "View::display==========" << std::endl;
+	g_host = this;
+	
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
 	draw_cameras();
 	draw_points();
 	draw_mesh();
@@ -67,6 +75,33 @@ void View::display() {
 
 void View::draw_cameras() {
 	std::cout << "View::draw_cameras" << std::endl;
+	
+	Camera** cameras = m_content->get_cameras();
+	int camera_count = m_content->get_camera_count();
+	
+	Rectangle bb = get_scene_bounding_box(cameras, camera_count);
+	
+	if (bb.width == 0 || bb.height == 0) {
+		return;
+	}
+	
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	
+	GlToolbox::othorgonal(bb);
+	
+	
+	for (int i = 0; i < camera_count; i++) {
+		draw_camera_instance(cameras[i]);
+	}
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();	
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+	
 }
 
 void View::draw_points() {
@@ -75,6 +110,34 @@ void View::draw_points() {
 
 void View::draw_mesh() {
 	std::cout << "View::draw_mesh" << std::endl;
+}
+
+void View::draw_camera_instance(Camera* camera) {
+	std::cout << "View::draw_camera_instance" << std::endl;
+	
+	//glBegin(GL_POINTS);
+	//glVertex3dv(camera->pos);
+	//glEnd();
+	
+	GlToolbox::transform_to(camera->pos, camera->rotation);
+	std::vector<Vec3d> image_corners;
+	image_corners.push_back(Vec3d(0, 0, 1));
+	//.. push other three corners
+	std::vector<Vec3d> sensor_corners = SpaceToolbox::unproject(image_corners);
+	
+	glBegin(GL_LINES);
+	for (std::vector<Vec3d>::const_iterator itr = sensor_corners.begin(); itr != sensor_corners.end(); itr++) {
+		glVertex3d(0, 0, 0);
+		glVertex3dv(itr->val);
+	}
+	glEnd();
+	
+	glBegin(GL_LINE_LOOP);
+	for (std::vector<Vec3d>::const_iterator itr = sensor_corners.begin(); itr != sensor_corners.end(); itr++) {
+		glVertex3dv(itr->val);
+	}
+	glEnd();
+
 }
 
 void View::start_content() {
@@ -90,6 +153,33 @@ void View::display_with(ViewContent* cv) {
 	glutPostRedisplay();
 
 	
+}
+
+Rectangle View::get_scene_bounding_box(Camera** cameras, int count) {
+
+	std::cout << "View::get_scene_bounding_box" << std::endl;
+
+	
+	double left = 0, right = 0, bottom = 0, top = 0;
+	double temp;
+	
+
+	for (int i = 0; i < count; i++) {
+	
+		temp = cameras[i]->pos[0]-cameras[i]->radius;
+		if (left > temp) { left = temp; }
+		
+		temp = cameras[i]->pos[0]+cameras[i]->radius;
+		if (right < temp) { right = temp; }
+	
+		temp = cameras[i]->pos[2]-cameras[i]->radius;
+		if (bottom > temp) { bottom = temp; }
+		
+		temp = cameras[i]->pos[2]+cameras[i]->radius;
+		if (top < temp) { top = temp; }
+	}
+
+	return Rectangle(left, bottom, right-left, top-bottom);
 }
 
 

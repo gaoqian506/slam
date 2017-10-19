@@ -2,6 +2,7 @@
 #ifndef __WW_VIEW_CONTENT_HEADER__
 #define __WW_VIEW_CONTENT_HEADER__
 
+#include "Camera.h"
 #include <iostream>
 
 namespace ww {
@@ -26,9 +27,11 @@ public:
 	ViewContent() : m_display_delegate(0) {
 		std::cout << "ViewContent::ViewContent" << std::endl;
 	}
-	virtual void tick() = 0;
+
 	virtual void start() = 0;
 	virtual void stop() = 0;
+	virtual Camera** get_cameras() = 0;
+	virtual int get_camera_count() = 0;
 	
 	void set_display_delegate(DisplayDelegate* dd) {
 		std::cout << "ViewContent::set_display_delegate" << std::endl;
@@ -42,6 +45,13 @@ protected:
 };
 
 
-}
+} // namespace
 
 #endif
+
+
+/*
+
+	virtual void tick() = 0;
+
+*/
