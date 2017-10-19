@@ -58,12 +58,23 @@ void View::run() {
 
 void View::display() {
 
-	std::cout << "View::display" << std::endl;
-	glClear(GL_COLOR_BUFFER_BIT);
-	//glBegin(GL_POINTS);
-	//glEnd();
-	glRectf(-0.5f,-0.5f,0.5f,0.5f);
+	draw_cameras();
+	draw_points();
+	draw_mesh();
+
 	glutSwapBuffers();
+}
+
+void View::draw_cameras() {
+	std::cout << "View::draw_cameras" << std::endl;
+}
+
+void View::draw_points() {
+	std::cout << "View::draw_points" << std::endl;
+}
+
+void View::draw_mesh() {
+	std::cout << "View::draw_mesh" << std::endl;
 }
 
 void View::start_content() {
@@ -86,6 +97,13 @@ void View::display_with(ViewContent* cv) {
 
 /*
 
+
+
+	std::cout << "View::display" << std::endl;
+	glClear(GL_COLOR_BUFFER_BIT);
+	//glBegin(GL_POINTS);
+	//glEnd();
+	glRectf(-0.5f,-0.5f,0.5f,0.5f);
 
 
 

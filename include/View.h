@@ -22,6 +22,9 @@ public:
 	void tick();
 	void display();
 	void start_content();
+	void draw_cameras();
+	void draw_points();
+	void draw_mesh();
 	
 	virtual void display_with(ViewContent* cv);
 	
