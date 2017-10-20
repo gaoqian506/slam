@@ -33,8 +33,8 @@ View::View(ViewContent* vc) {
 	vc->set_display_delegate(this);
 
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-	//glutInitWindowPosition(0, 0); 
-	glutInitWindowSize(800, 800);
+	glutInitWindowPosition(0, 0); 
+	glutInitWindowSize(300, 300);
 	glutCreateWindow("OpenGL 3D View");
 	glutDisplayFunc(g_display);
 

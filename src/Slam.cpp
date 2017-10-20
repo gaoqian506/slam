@@ -1,7 +1,7 @@
 
 
 #include "Slam.h"
-
+#include "Image.h"
 #include <iostream>
 #include <memory.h>
 
@@ -29,11 +29,14 @@ void Slam::start() {
 	//for(int i = 0; i < 10; i++) {
 	//	push();
 	//}
-	while(/*vs->read_frame() && */m_working) {
-
+	
+	Image* image = NULL;
+	
+	while(m_source->read(image) && m_working) {
 		push();
-		break;
 	}
+	
+	if (image) { delete image; }
 	
 	std::cout << "leave Slam::start" << std::endl;
 

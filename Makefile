@@ -1,7 +1,7 @@
 
 
 INCLUDE_DIR = -Iinclude
-LIBS = -lGL -lGLU -lglut -lpthread
+LIBS = -lGL -lGLU -lglut -lpthread -lopencv_highgui -lopencv_core
 FLAGS = -g
 SRCS=$(wildcard  src/*.cpp)
 OBJS=$(SRCS:%.cpp=%.o)
