@@ -33,8 +33,8 @@ View::View(ViewContent* vc) {
 	vc->set_display_delegate(this);
 
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-	glutInitWindowPosition(0, 0); 
-	glutInitWindowSize(300, 300);
+	//glutInitWindowPosition(0, 0); 
+	glutInitWindowSize(800, 800);
 	glutCreateWindow("OpenGL 3D View");
 	glutDisplayFunc(g_display);
 
@@ -65,6 +65,8 @@ void View::display() {
 	g_host = this;
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 	
 	draw_cameras();
 	draw_points();
@@ -75,6 +77,8 @@ void View::display() {
 
 void View::draw_cameras() {
 	std::cout << "View::draw_cameras" << std::endl;
+	
+
 	
 	Camera** cameras = m_content->get_cameras();
 	int camera_count = m_content->get_camera_count();
@@ -115,15 +119,20 @@ void View::draw_mesh() {
 void View::draw_camera_instance(Camera* camera) {
 	std::cout << "View::draw_camera_instance" << std::endl;
 	
-	//glBegin(GL_POINTS);
-	//glVertex3dv(camera->pos);
-	//glEnd();
+
 	
 	GlToolbox::transform_to(camera->pos, camera->rotation);
 	std::vector<Vec3d> image_corners;
 	image_corners.push_back(Vec3d(0, 0, 1));
+	image_corners.push_back(Vec3d(640, 0, 1));
+	image_corners.push_back(Vec3d(640, 480, 1));
+	image_corners.push_back(Vec3d(0, 480, 1));
 	//.. push other three corners
-	std::vector<Vec3d> sensor_corners = SpaceToolbox::unproject(image_corners);
+	std::vector<Vec3d> sensor_corners = SpaceToolbox::unproject(camera->intrinsic, image_corners);
+	
+	glColor3d(0.87,0.623,3.222);
+	
+
 	
 	glBegin(GL_LINES);
 	for (std::vector<Vec3d>::const_iterator itr = sensor_corners.begin(); itr != sensor_corners.end(); itr++) {
@@ -187,6 +196,10 @@ Rectangle View::get_scene_bounding_box(Camera** cameras, int count) {
 
 /*
 
+
+	glBegin(GL_POINTS);
+	glVertex3d(0, 0, 0);
+	glEnd();
 
 
 	std::cout << "View::display" << std::endl;

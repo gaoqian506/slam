@@ -6,6 +6,16 @@
 
 namespace ww {
 
+
+struct Intrinsic {
+	Intrinsic() : f(500), cx(320), cy(240) {
+	
+	}
+	double f;
+	double cx;
+	double cy;
+};
+
 struct Camera {
 
 	Camera() : radius(10) {
@@ -15,6 +25,7 @@ struct Camera {
 	double pos[3];
 	double rotation[3];
 	double radius;
+	Intrinsic intrinsic;
 };
 
 
