@@ -5,6 +5,7 @@
 
 #include "ViewContent.h"
 #include "VideoSource.h"
+#include "Vectors.h"
 #include <vector>
 
 #define MAX_STATIC_CAMERA_COUNT 100
@@ -23,13 +24,16 @@ public:
 	virtual Camera** get_cameras();
 	virtual int get_camera_count();
 	
-	void push();
-	void preprocess();
-	void update_pose();
-	void update_keyframe();
-	void update_map();
+	void push(Image* image);
+	void preprocess(Image* image);
+	void update_pose(Image* image);
+	void update_keyframe(Image* image);
+	void update_map(Image* image);
 
 private:
+
+	Vec3d calc_delta_t(Image* image);
+
 	VideoSource* m_source;
 	bool m_working;
 	Camera* m_cameras[MAX_STATIC_CAMERA_COUNT];

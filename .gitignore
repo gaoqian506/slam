@@ -9,4 +9,4 @@
 # 忽略所有.o和 .a文件.
 #*.[oa]
 
-#data/abc.mp4
+data/abc.mp4

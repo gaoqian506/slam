@@ -7,7 +7,7 @@ namespace ww {
 
 struct Vec3d {
 
-	Vec3d(const double& a, const double& b, const double& c) {
+	Vec3d(const double& a = 0, const double& b = 0, const double& c = 0) {
 	
 		val[0] = a;
 		val[1] = b;

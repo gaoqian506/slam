@@ -33,7 +33,7 @@ void Slam::start() {
 	Image* image = NULL;
 	
 	while(m_source->read(image) && m_working) {
-		push();
+		push(image);
 	}
 	
 	if (image) { delete image; }
@@ -63,13 +63,13 @@ int Slam::get_camera_count() {
 	return m_camera_count;
 }
 
-void Slam::push() {
+void Slam::push(Image* image) {
 
 	std::cout << "Slam::push" << std::endl;
-	preprocess();
-	update_pose();
-	update_keyframe();
-	update_map();
+	preprocess(image);
+	update_pose(image);
+	update_keyframe(image);
+	update_map(image);
 
 	if (m_display_delegate) {
 		m_display_delegate->display_with(this);
@@ -77,15 +77,29 @@ void Slam::push() {
 }
 
 
-void Slam::preprocess(){
+void Slam::preprocess(Image* image){
 
 	std::cout << "Slam::preprocess" << std::endl;
+	
 }
-void Slam::update_pose(){
+void Slam::update_pose(Image* image){
 
 	std::cout << "Slam::update_pose" << std::endl;
+	
+	Vec3d delta_t;
+	
+	while(true) {
+	
+		delta_t = calc_delta_t(image);
+		//... collect other deltas
+		//current_camera->pose += delta_t;
+		
+		//if (satisfied) { break; }
+	}
 }
-void Slam::update_keyframe(){
+
+
+void Slam::update_keyframe(Image* image){
 
 	std::cout << "Slam::update_keyframe" << std::endl;
 
@@ -102,9 +116,25 @@ void Slam::update_keyframe(){
 	m_camera_count++;
 	}
 }
-void Slam::update_map(){
+void Slam::update_map(Image* image){
 
 	std::cout << "Slam::update_map" << std::endl;
+}
+
+Vec3d Slam::calc_delta_t(Image* image) {
+
+	//foreach(pixel) {
+	
+		// calc a;
+		// calc b;
+		// calc w;
+		// A += w * a * a';
+		// B += w * b;
+	//}
+	//return inv(A) * B;
+	
+	return Vec3d();
+
 }
 
 
