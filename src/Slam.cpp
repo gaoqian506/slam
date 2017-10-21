@@ -141,9 +141,9 @@ Vec3d Slam::calc_delta_t() {
 
 	if (!m_key || !m_frame) { return Vec3d(); }
 
-	unsigned short* pGx = (unsigned short*)m_frame->gradient[0]->data();
-	unsigned short* pGy = (unsigned short*)m_frame->gradient[1]->data();
-	float* pDg = (float*)m_frame->residual->data();
+	short* pGx = (short*)m_frame->gradient[0]->data();
+	short* pGy = (short*)m_frame->gradient[1]->data();
+	short* pDg = (short*)m_frame->residual->data();
 	float* pIz = (float*)m_key->depth->data();
 
 	int total = m_frame->gray->width() * m_frame->gray->height();

@@ -54,8 +54,9 @@ void CvImage::subtract(Image* b, Image*& out) {
 	}
 	CvImage* cv_out = static_cast<CvImage*>(out);
 	CvImage* cv_b = static_cast<CvImage*>(b);
-	cv::subtract(m_cv_mat, cv_b->cv_mat(), cv_out->cv_mat());
-	
+	cv::subtract(m_cv_mat, cv_b->cv_mat(), cv_out->cv_mat(), cv::noArray(), CV_16S);
+	//int t = cv_out->cv_mat().type();
+	//cv_b = 0;
 }
 void CvImage::copy_to(Image*& out) {
 
