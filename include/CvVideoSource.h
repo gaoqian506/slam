@@ -16,7 +16,7 @@ class CvVideoSource : public VideoSource {
 public:
 	CvVideoSource(const char* path);
 
-	virtual bool read(Image* image);
+	virtual bool read(Image*& image);
 
 private:
 	cv::VideoCapture m_capture;

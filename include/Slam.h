@@ -26,20 +26,21 @@ public:
 	
 	void push(Image* image);
 	void preprocess(Image* image);
-	void update_pose(Image* image);
+	void update_pose();
 	void update_keyframe(Image* image);
-	void update_map(Image* image);
+	void update_map();
 
 private:
 
-	Vec3d calc_delta_t(Image* image);
+	Vec3d calc_delta_t();
 
 	VideoSource* m_source;
 	bool m_working;
 	Camera* m_cameras[MAX_STATIC_CAMERA_COUNT];
 	int m_camera_count;
 	std::vector<Camera*> m_keyframes;
-	Camera* m_current_keyframe;
+	Camera* m_key;
+	Camera* m_frame;
 
 };
 

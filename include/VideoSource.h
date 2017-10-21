@@ -13,7 +13,7 @@ class VideoSource {
 
 
 public:
-	virtual bool read(Image* image) = 0;
+	virtual bool read(Image*& image) = 0;
 
 };
 

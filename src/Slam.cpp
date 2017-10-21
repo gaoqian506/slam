@@ -2,14 +2,16 @@
 
 #include "Slam.h"
 #include "Image.h"
+#include "MatrixToolbox.h"
 #include <iostream>
 #include <memory.h>
+#include <cmath>
 
 
 namespace ww {
 
 
-Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0) {
+Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL) {
 
 	std::cout << "Slam::Slam" << std::endl;
 	
@@ -67,9 +69,9 @@ void Slam::push(Image* image) {
 
 	std::cout << "Slam::push" << std::endl;
 	preprocess(image);
-	update_pose(image);
+	update_pose();
 	update_keyframe(image);
-	update_map(image);
+	update_map();
 
 	if (m_display_delegate) {
 		m_display_delegate->display_with(this);
@@ -81,8 +83,16 @@ void Slam::preprocess(Image* image){
 
 	std::cout << "Slam::preprocess" << std::endl;
 	
+	if (m_key) {
+		if (!m_frame) { m_frame = new Camera(); }
+		image->gray(m_frame->gray);
+		image->sobel_x(m_frame->gradient[0]);
+		image->sobel_y(m_frame->gradient[1]);
+		m_frame->gray->subtract(m_key->gray, m_frame->residual);
+	}
+	
 }
-void Slam::update_pose(Image* image){
+void Slam::update_pose(){
 
 	std::cout << "Slam::update_pose" << std::endl;
 	
@@ -90,11 +100,11 @@ void Slam::update_pose(Image* image){
 	
 	while(true) {
 	
-		delta_t = calc_delta_t(image);
+		delta_t = calc_delta_t();
 		//... collect other deltas
 		//current_camera->pose += delta_t;
 		
-		//if (satisfied) { break; }
+		if (delta_t.length2() < 0.0001) { break; }
 	}
 }
 
@@ -103,26 +113,104 @@ void Slam::update_keyframe(Image* image){
 
 	std::cout << "Slam::update_keyframe" << std::endl;
 
-	if (m_current_keyframe == NULL) {
+	if (m_key == NULL) {
 	
-		m_current_keyframe = new Camera();
-		memset(m_current_keyframe->pos, 0, sizeof(m_current_keyframe->pos));
-		//m_current_keyframe->image = image;
-		//m_current_keyframe->depth = default_depth; 
+		m_key = new Camera();
 		
-		m_keyframes.push_back(m_current_keyframe);
-		m_cameras[m_camera_count] = m_current_keyframe;
+		image->copy_to(m_key->original);
+		image->gray(m_key->gray);
+		image->convert_to(m_key->depth, Image::Float32);
+		m_key->depth->set(0.1);
+		
+		//memset(m_key->pos, 0, sizeof(m_key->pos));
+		//m_key->image = image;
+		//m_key->depth = default_depth; 
+		
+		m_keyframes.push_back(m_key);
+		m_cameras[m_camera_count] = m_key;
 	
 	m_camera_count++;
 	}
 }
-void Slam::update_map(Image* image){
+void Slam::update_map(){
 
 	std::cout << "Slam::update_map" << std::endl;
 }
 
-Vec3d Slam::calc_delta_t(Image* image) {
+Vec3d Slam::calc_delta_t() {
 
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	unsigned short* pGx = (unsigned short*)m_frame->gradient[0]->data();
+	unsigned short* pGy = (unsigned short*)m_frame->gradient[1]->data();
+	float* pDg = (float*)m_frame->residual->data();
+	float* pIz = (float*)m_key->depth->data();
+
+	int total = m_frame->gray->width() * m_frame->gray->height();
+	
+	double a[3];
+	double w, temp;
+	Vec9d A;
+	Vec3d B;
+	
+	for (int i = 0; i < total; i++) {
+
+		w = (std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
+		temp = m_frame->intrinsic.f*pIz[i];
+		a[0] = w*pGx[i]*temp;
+		a[1] = w*pGy[i]*temp;
+		a[2] = -w*(a[0]+a[1])*pIz[i]*temp;
+		
+		A[0] += a[0]*a[0];
+		A[1] += a[0]*a[1];
+		A[2] += a[0]*a[2];
+		A[4] += a[1]*a[1];
+		A[5] += a[1]*a[2];
+		A[8] += a[2]*a[2];
+		
+		B[0] += a[0]*pDg[i];
+		B[1] += a[1]*pDg[i];
+		B[2] += a[2]*pDg[i];
+	}
+	
+	A[3] = A[1];
+	A[6] = A[2];
+	A[7] = A[5];
+	
+	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
+	return Vec3d(
+		invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2],
+		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
+		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
+	);
+	
+
+}
+
+
+
+} // namespace
+
+
+/***************************
+
+
+
+
+	unsigned char* pGray = (unsigned char*)m_frame->gray->data();
+
+
+	return Vec3d();
+	
+	//int width = image->width;
+	//int height = image->height;
+	
+	//u = i % width;
+	//v = i / width;
+	
+	
+	
+	
 	//foreach(pixel) {
 	
 		// calc a;
@@ -134,16 +222,6 @@ Vec3d Slam::calc_delta_t(Image* image) {
 	//return inv(A) * B;
 	
 	return Vec3d();
-
-}
-
-
-
-} // namespace
-
-
-/***************************
-
 
 
 #include <unistd.h>

@@ -3,6 +3,8 @@
 #define __WW_CAMERA_HEADER__
 
 
+#include "Image.h"
+#include "Vectors.h"
 
 namespace ww {
 
@@ -16,16 +18,22 @@ struct Intrinsic {
 	double cy;
 };
 
-struct Camera {
+class Camera {
 
-	Camera() : radius(10) {
-	
-	}
+public:
+	Camera();
+	~Camera();
 
-	double pos[3];
-	double rotation[3];
+	Vec3d pos;
+	Vec3d rotation;
 	double radius;
 	Intrinsic intrinsic;
+	
+	Image* original;
+	Image* gray;
+	Image* gradient[2];
+	Image* depth;
+	Image* residual;
 };
 
 

@@ -16,7 +16,7 @@ CvVideoSource::CvVideoSource(const char* path) {
 }
 
 
-bool CvVideoSource::read(Image* image) {
+bool CvVideoSource::read(Image*& image) {
 
 	if (image == NULL) { 
 		image = new CvImage(); 
@@ -39,5 +39,5 @@ bool CvVideoSource::read(Image* image) {
 }
 
 
-}
+} // namespace
 
