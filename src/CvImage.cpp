@@ -7,6 +7,22 @@
 
 namespace ww {
 
+	CvImage::CvImage() {
+		
+	}
+	
+	CvImage::CvImage(const int& width, const int& height, const DataType& type, const int& channels) {
+		switch(type) {
+		case Float32:
+			m_cv_mat = cv::Mat(height, width, CV_32FC(channels));
+			break;
+		case UByte:
+			m_cv_mat = cv::Mat(height, width, CV_8UC(channels));
+			break;
+		
+		}
+	}
+
 void* CvImage::data() {
 
 	return m_cv_mat.data;
@@ -88,6 +104,14 @@ void CvImage::set(double v) {
 
 	m_cv_mat.setTo(v);
 }
+
+//float CvImage::sample(const float& a, const float& b) {
+
+	//assert(m_cv_mat.type() == CV_32F);
+	
+	//return 0; 
+ 
+ //}
 
 
 } // namespace

@@ -12,7 +12,7 @@ class Image {
 
 public:
 
-	enum DataType{ Float32 };
+	enum DataType{ Float32, UByte };
 
 	virtual void* data() { return 0; }
 	virtual int width() { return 0; }
@@ -26,6 +26,7 @@ public:
 	virtual void convert_to(Image*& out, DataType type) { }
 	
 	virtual void set(double v) { }
+	virtual float sample(const float& a, const float& b) { return 0; }
 	
 
 };

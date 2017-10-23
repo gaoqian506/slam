@@ -28,7 +28,7 @@ bool CvVideoSource::read(Image*& image) {
 	
 	if (m_capture.read(cv_image->cv_mat())) {
 		cv::imshow("video", cv_image->cv_mat());  
-		cv::waitKey(20);
+		cv::waitKey(10);
 		return true;	
 	}
 	else {

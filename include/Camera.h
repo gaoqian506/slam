@@ -23,6 +23,9 @@ class Camera {
 public:
 	Camera();
 	~Camera();
+	
+	Vec3f unproject(const float& u, const float& v, const float& d);
+	Vec3f project(const Vec3f& pt);
 
 	Vec3d pos;
 	Vec3d rotation;

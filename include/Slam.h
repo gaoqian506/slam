@@ -24,14 +24,18 @@ public:
 	virtual Camera** get_cameras();
 	virtual int get_camera_count();
 	
+
+
+private:
+
+	void initialize(Image* image);
 	void push(Image* image);
 	void preprocess(Image* image);
 	void update_pose();
 	void update_keyframe(Image* image);
 	void update_map();
 
-private:
-
+	void prepare_residual();
 	Vec3d calc_delta_t();
 
 	VideoSource* m_source;
@@ -41,6 +45,11 @@ private:
 	std::vector<Camera*> m_keyframes;
 	Camera* m_key;
 	Camera* m_frame;
+	Image* m_mask;
+	Image* m_points;
+	Image* m_residual;
+	Image* m_gradient;
+	Image* m_depth;
 
 };
 
