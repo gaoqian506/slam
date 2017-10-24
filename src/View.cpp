@@ -98,9 +98,13 @@ void View::draw_cameras() {
 	
 	
 	for (int i = 0; i < camera_count; i++) {
-		draw_camera_instance(cameras[i]);
+		//draw_camera_instance(cameras[i]);
 	}
 
+	Camera* current = m_content->get_current_frame();
+	if (current) {
+		draw_camera_instance(current);
+	}
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();	
 	glMatrixMode(GL_MODELVIEW);

@@ -10,7 +10,7 @@ Camera::Camera() : radius(10) {
 	gradient[0] = NULL;
 	gradient[1] = NULL;
 	depth = NULL;
-	residual = NULL;
+	//residual = NULL;
 }
 
 Camera::~Camera() {

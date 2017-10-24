@@ -32,7 +32,8 @@ public:
 	virtual void convert_to(Image*& out, DataType type);
 	
 	virtual void set(double v);
-	virtual float sample(const float& a, const float& b) { return 0; }
+	virtual void save(const char* path);
+	//virtual float sample(const float& a, const float& b) { return 0; }
 
 private:
 

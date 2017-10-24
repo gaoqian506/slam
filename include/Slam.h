@@ -23,6 +23,7 @@ public:
 	virtual void stop();
 	virtual Camera** get_cameras();
 	virtual int get_camera_count();
+	virtual Camera* get_current_frame();
 	
 
 

@@ -74,6 +74,11 @@ int Slam::get_camera_count() {
 	return m_camera_count;
 }
 
+Camera* Slam::get_current_frame() {
+	std::cout << "Slam::get_current_frame" << std::endl;
+	return m_frame;
+}
+
 void Slam::initialize(Image* image) {
 
 	int w = image->width();
@@ -108,9 +113,12 @@ void Slam::preprocess(Image* image){
 	if (m_key) {
 		if (!m_frame) { m_frame = new Camera(); }
 		image->gray(m_frame->gray);
-		image->sobel_x(m_frame->gradient[0]);
-		image->sobel_y(m_frame->gradient[1]);
-		m_frame->gray->subtract(m_key->gray, m_frame->residual);
+		m_frame->gray->sobel_x(m_frame->gradient[0]);
+		m_frame->gray->sobel_y(m_frame->gradient[1]);
+		
+		//m_frame->gradient[0]->save("aaa.jpg");
+		//m_frame->gradient[1]->save("bbb.jpg");
+		//m_frame->gray->subtract(m_key->gray, m_frame->residual);
 	}
 	
 }
@@ -145,24 +153,17 @@ void Slam::update_keyframe(Image* image){
 		
 		image->copy_to(m_key->original);
 		image->gray(m_key->gray);
-		image->convert_to(m_key->depth, Image::Float32);
+		m_key->depth = new CvImage(image->width(), image->height(), Image::Float32);
+
 		m_key->depth->set(0.1);
-		
-		//memset(m_key->pos, 0, sizeof(m_key->pos));
-		//m_key->image = image;
-		//m_key->depth = default_depth; 
-		
+
 		m_keyframes.push_back(m_key);
 		m_cameras[m_camera_count] = m_key;
 	
 		m_camera_count++;
 	}
 	
-	if (m_camera_count == 1) {
-	
-		m_cameras[m_camera_count] = m_frame;
-		m_camera_count++;
-	}
+
 }
 void Slam::update_map(){
 
@@ -187,13 +188,14 @@ void Slam::prepare_residual() {
 	int u, v;
 	Vec3f m;
 	Vec4f p;
-	unsigned char* pubyte;
+	//unsigned char* pubyte;
 	float* pfloat;
+	//short* pShort;
 
 	float* p_dkey = (float*)m_key->depth->data();
 	Vec4f* p_pts = (Vec4f*)m_points->data();
 	unsigned char* p_mask = (unsigned char*)m_mask->data();
-	unsigned char* p_gkey = (unsigned char*)m_key->gray->data();
+	float* p_gkey = (float*)m_key->gray->data();
 	float* p_dg = (float*)m_residual->data();
 	Vec2f* p_grad = (Vec2f*)m_gradient->data();
 	float* p_depth = (float*)m_depth->data();
@@ -223,8 +225,8 @@ void Slam::prepare_residual() {
 			v = (int)m[1];
 			m[0] -= u;
 			m[1] -= v;
-			pubyte = (unsigned char*)(m_frame->gray->data()) + v * width + u;
-			p_dg[i] = p_gkey[i] - SAMPLE_2D(pubyte[0], pubyte[1], pubyte[width], pubyte[width+1], m[0], m[1]);
+			pfloat = (float*)(m_frame->gray->data()) + v * width + u;
+			p_dg[i] = p_gkey[i] - SAMPLE_2D(pfloat[0], pfloat[1], pfloat[width], pfloat[width+1], m[0], m[1]);
 			
 			pfloat = (float*)(m_frame->gradient[0]->data()) + v * width + u;
 			p_grad[i][0] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[width], pfloat[width+1], m[0], m[1]);
@@ -236,6 +238,9 @@ void Slam::prepare_residual() {
 		}
 		else { 
 			p_mask[i] = 0;
+			p_dg[i] = 0;
+			p_grad[i] = 0;
+			p_depth[i] = 0;
 		}
 
 	}
@@ -247,12 +252,12 @@ Vec3d Slam::calc_delta_t() {
 
 	if (!m_key || !m_frame) { return Vec3d(); }
 
-	short* pGx = (short*)m_frame->gradient[0]->data();
-	short* pGy = (short*)m_frame->gradient[1]->data();
-	short* pDg = (short*)m_frame->residual->data();
-	float* pIz = (float*)m_key->depth->data();
+	Vec2f* pGrad = (Vec2f*)m_gradient->data();
+	float* pDg = (float*)m_residual->data();
+	float* pDepth = (float*)m_depth->data();
 
 	int total = m_frame->gray->width() * m_frame->gray->height();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
 	
 	double a[3];
 	double w, temp;
@@ -260,12 +265,12 @@ Vec3d Slam::calc_delta_t() {
 	Vec3d B;
 	
 	for (int i = 0; i < total; i++) {
-
-		w = (std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
-		temp = m_frame->intrinsic.f*pIz[i];
-		a[0] = w*pGx[i]*temp;
-		a[1] = w*pGy[i]*temp;
-		a[2] = -w*(a[0]+a[1])*pIz[i]*temp;
+		if (!pMask[i]) { continue; }
+		w = 1;//(std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
+		temp = m_frame->intrinsic.f*pDepth[i];
+		a[0] = w*pGrad[i][0]*temp;
+		a[1] = w*pGrad[i][1]*temp;
+		a[2] = -w*(a[0]+a[1])*pDepth[i]*temp;
 		
 		A[0] += a[0]*a[0];
 		A[1] += a[0]*a[1];
@@ -302,6 +307,23 @@ Vec3d Slam::calc_delta_t() {
 
 
 
+		//image->convert_to(m_key->depth, Image::Float32);
+				
+		//memset(m_key->pos, 0, sizeof(m_key->pos));
+		//m_key->image = image;
+		//m_key->depth = default_depth; 
+
+	short* pGx = (short*)m_frame->gradient[0]->data();
+	short* pGy = (short*)m_frame->gradient[1]->data();
+	short* pDg = (short*)m_frame->residual->data();
+	float* pIz = (float*)m_key->depth->data();
+	
+
+	if (m_camera_count == 1) {
+	
+		m_cameras[m_camera_count] = m_frame;
+		m_camera_count++;
+	}
 		
 			p_grad[i][0] = m_frame->gradient[0]->sample(m[0], m[1]);
 			p_grad[i][1] = m_frame->gradient[1]->sample(m[0], m[1]);

@@ -1,8 +1,7 @@
 
 #include "CvImage.h"
 
-//#include "opencv2/improc/improc.hpp"
-//#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp" 
 
 namespace ww {
@@ -43,7 +42,10 @@ void CvImage::gray(Image*& out) {
 		out = new CvImage();
 	}
 	CvImage* cv_out = static_cast<CvImage*>(out);
-	cv::cvtColor(m_cv_mat, cv_out->cv_mat(), CV_BGR2GRAY); 
+	cv::Mat gray;
+	cv::cvtColor(m_cv_mat, gray/*cv_out->cv_mat()*/, CV_BGR2GRAY); 
+	
+	gray.convertTo(cv_out->cv_mat(), CV_32F, 1.0/255.0);
 
 }
 void CvImage::sobel_x(Image*& out) {
@@ -70,7 +72,7 @@ void CvImage::subtract(Image* b, Image*& out) {
 	}
 	CvImage* cv_out = static_cast<CvImage*>(out);
 	CvImage* cv_b = static_cast<CvImage*>(b);
-	cv::subtract(m_cv_mat, cv_b->cv_mat(), cv_out->cv_mat(), cv::noArray(), CV_16S);
+	cv::subtract(m_cv_mat, cv_b->cv_mat(), cv_out->cv_mat());
 	//int t = cv_out->cv_mat().type();
 	//cv_b = 0;
 }
@@ -103,6 +105,16 @@ void CvImage::convert_to(Image*& out, DataType type) {
 void CvImage::set(double v) {
 
 	m_cv_mat.setTo(v);
+}
+
+void CvImage::save(const char* path) {
+
+	double minv = 0.0, maxv = 0.0;  
+	double* minp = &minv;  
+	double* maxp = &maxv;  
+	minMaxIdx(m_cv_mat, &minv, &maxv); 
+	cv::Mat stand = (m_cv_mat-minv) / (maxv-minv) * 255;
+	cv::imwrite(path, stand);
 }
 
 //float CvImage::sample(const float& a, const float& b) {

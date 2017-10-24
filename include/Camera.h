@@ -36,7 +36,7 @@ public:
 	Image* gray;
 	Image* gradient[2];
 	Image* depth;
-	Image* residual;
+	//Image* residual;
 };
 
 

@@ -32,6 +32,7 @@ public:
 	virtual void stop() = 0;
 	virtual Camera** get_cameras() = 0;
 	virtual int get_camera_count() = 0;
+	virtual Camera* get_current_frame() = 0;
 	
 	void set_display_delegate(DisplayDelegate* dd) {
 		std::cout << "ViewContent::set_display_delegate" << std::endl;
