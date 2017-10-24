@@ -90,6 +90,13 @@ struct Vec3d {
 		val[2] += right[0];
 		return *this;
 	}
+	Vec3d& operator/=(const double& d) {
+	
+		val[0] /= d;
+		val[1] /= d;
+		val[2] /= d;
+		return *this;
+	}
 	
 	double length2() { return val[0]*val[0]+val[1]*val[1]+val[2]*val[2]; }
 	double val[3];
@@ -104,6 +111,37 @@ struct Vec9d {
 	double& operator[](int idx) {
 		return val[idx];
 	}
+	
+	Vec9d& operator/=(const double& d) {
+	
+		val[0] /= d;
+		val[1] /= d;
+		val[2] /= d;
+		val[3] /= d;
+		val[4] /= d;
+		val[5] /= d;
+		val[6] /= d;
+		val[7] /= d;
+		val[8] /= d;
+		return *this;
+	}
+	
+	Vec9d& operator=(const double& d) {
+	
+		val[0] = d;
+		val[1] = d;
+		val[2] = d;
+		val[3] = d;
+		val[4] = d;
+		val[5] = d;
+		val[6] = d;
+		val[7] = d;
+		val[8] = d;
+		return *this;
+	}
+	
+	double* ptr() { return val; }
+	
 	double val[9];
 	
 };

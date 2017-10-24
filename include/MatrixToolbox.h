@@ -15,7 +15,7 @@ class MatrixToolbox {
 
 public:
 
-static Vec9d inv_matrix_3x3(const Vec9d from);
+static Vec9d inv_matrix_3x3(Vec9d& from);
 
 
 };

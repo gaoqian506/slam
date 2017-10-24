@@ -24,7 +24,7 @@ public:
 	virtual Camera** get_cameras();
 	virtual int get_camera_count();
 	virtual Camera* get_current_frame();
-	
+	virtual bool changed();
 
 
 private:
@@ -51,6 +51,7 @@ private:
 	Image* m_residual;
 	Image* m_gradient;
 	Image* m_depth;
+	bool m_changed;
 
 };
 

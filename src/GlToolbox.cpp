@@ -41,7 +41,8 @@ void GlToolbox::othorgonal(const Rectangle& rect) {
 
 void GlToolbox::transform_to(const Vec3d& pose, const Vec3d& rotation) {
 	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	glTranslated(pose[0], pose[1], pose[2]);
+	//glLoadIdentity();
 }
 
 void GlToolbox::transform_to(const double* pose, const double* rotation) {

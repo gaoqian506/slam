@@ -15,7 +15,7 @@
 namespace ww {
 
 
-Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL) {
+Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL), m_changed(false) {
 
 	std::cout << "Slam::Slam" << std::endl;
 	
@@ -79,6 +79,11 @@ Camera* Slam::get_current_frame() {
 	return m_frame;
 }
 
+bool Slam::changed() {
+
+	return m_changed;
+}
+
 void Slam::initialize(Image* image) {
 
 	int w = image->width();
@@ -100,9 +105,10 @@ void Slam::push(Image* image) {
 	update_keyframe(image);
 	update_map();
 
-	if (m_display_delegate) {
-		m_display_delegate->display_with(this);
-	}
+	m_changed = true;
+//	if (m_display_delegate) {
+//		m_display_delegate->display_with(this);
+//	}
 }
 
 
@@ -270,7 +276,7 @@ Vec3d Slam::calc_delta_t() {
 		temp = m_frame->intrinsic.f*pDepth[i];
 		a[0] = w*pGrad[i][0]*temp;
 		a[1] = w*pGrad[i][1]*temp;
-		a[2] = -w*(a[0]+a[1])*pDepth[i]*temp;
+		a[2] = -(a[0]+a[1])*pDepth[i];
 		
 		A[0] += a[0]*a[0];
 		A[1] += a[0]*a[1];
@@ -287,6 +293,9 @@ Vec3d Slam::calc_delta_t() {
 	A[3] = A[1];
 	A[6] = A[2];
 	A[7] = A[5];
+	
+	A /= total;
+	B /= total;
 	
 	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
 	return Vec3d(

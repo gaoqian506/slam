@@ -28,6 +28,7 @@ public:
 	void draw_points();
 	void draw_mesh();
 	void draw_camera_instance(Camera* camera);
+	ViewContent* content() { return m_content; }
 	
 	virtual void display_with(ViewContent* cv);
 	
@@ -37,6 +38,7 @@ private:
 
 	ViewContent* m_content;
 	pthread_t m_thread_id;
+	
 
 
 };

@@ -16,6 +16,13 @@ void g_display(void) {
 	if (g_host) { ((View*)g_host)->display(); }
 }
 
+void g_idle(void) {
+
+	if (g_host && ((View*)g_host)->content()->changed()) { ((View*)g_host)->display(); }
+}
+
+
+
 void* g_thread(void*) {
 
 	std::cout << "g_thread" << std::endl;
@@ -37,6 +44,7 @@ View::View(ViewContent* vc) {
 	glutInitWindowSize(300, 300);
 	glutCreateWindow("OpenGL 3D View");
 	glutDisplayFunc(g_display);
+	glutIdleFunc(g_idle);
 
 }
 
@@ -163,7 +171,8 @@ void View::start_content() {
 void View::display_with(ViewContent* cv) {
 
 	std::cout << "View::display_with" << std::endl;
-	glutPostRedisplay();
+	//glutPostRedisplay();
+	
 
 	
 }
