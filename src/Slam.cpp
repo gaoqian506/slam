@@ -162,6 +162,7 @@ void Slam::update_keyframe(Image* image){
 		m_key->depth = new CvImage(image->width(), image->height(), Image::Float32);
 
 		m_key->depth->set(0.1);
+		m_key->points = new CvImage(image->width(), image->height(), Image::Float32, 4);
 
 		m_keyframes.push_back(m_key);
 		m_cameras[m_camera_count] = m_key;
@@ -200,6 +201,7 @@ void Slam::prepare_residual() {
 
 	float* p_dkey = (float*)m_key->depth->data();
 	Vec4f* p_pts = (Vec4f*)m_points->data();
+	Vec4f* p_key_pts = (Vec4f*)m_key->points->data();
 	unsigned char* p_mask = (unsigned char*)m_mask->data();
 	float* p_gkey = (float*)m_key->gray->data();
 	float* p_dg = (float*)m_residual->data();
@@ -215,11 +217,15 @@ void Slam::prepare_residual() {
 		p[2] = 1;
 		p[3] = p_dkey[i];
 		
+		p_key_pts[i] = p;
+		
 		p[0] = p[0] + p[3] * trans[0];
 		p[1] = p[1] + p[3] * trans[1];
 		p[2] = p[2] + p[3] * trans[2];
 		
 		p /= p[2];
+		
+		p_pts[i] = p;
 		
 		m[0] = intri1.f * p[0] + intri1.cx;
 		m[1] = intri1.f * p[1] + intri1.cy;
