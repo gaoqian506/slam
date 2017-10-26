@@ -162,13 +162,14 @@ void View::draw_camera_instance(Camera* camera) {
 	}
 	glEnd();
 	
-	int total = camera->points->width() * camera->points->height();
+	if (camera->points) {
+		int total = camera->points->width() * camera->points->height();
 	
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(4, GL_FLOAT, 0, camera->points->data());
-	 glDrawArrays(GL_POINTS, 0, total);
-	glDisableClientState(GL_VERTEX_ARRAY);
-
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glVertexPointer(4, GL_FLOAT, 0, camera->points->data());
+		 glDrawArrays(GL_POINTS, 0, total);
+		glDisableClientState(GL_VERTEX_ARRAY);
+	}
 }
 
 void View::start_content() {

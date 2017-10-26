@@ -4,12 +4,13 @@
 
 namespace ww {
 
-Camera::Camera() : radius(10) {
+Camera::Camera() : radius(20) {
 	original = NULL;
 	gray = NULL;
 	gradient[0] = NULL;
 	gradient[1] = NULL;
 	depth = NULL;
+	points = NULL;
 	//residual = NULL;
 }
 
