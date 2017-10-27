@@ -28,7 +28,7 @@ public:
 	Vec3f project(const Vec3f& pt);
 
 	Vec3d pos;
-	Vec3d rotation;
+	Vec9d rotation;
 	double radius;
 	Intrinsic intrinsic;
 	

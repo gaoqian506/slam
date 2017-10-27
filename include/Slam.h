@@ -38,6 +38,7 @@ private:
 
 	void prepare_residual();
 	Vec3d calc_delta_t();
+	Vec3d calc_delta_r();
 
 	VideoSource* m_source;
 	bool m_working;
@@ -51,6 +52,7 @@ private:
 	Image* m_residual;
 	Image* m_gradient;
 	Image* m_depth;
+	Image* m_iuux;
 	bool m_changed;
 
 };

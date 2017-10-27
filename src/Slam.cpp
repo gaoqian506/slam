@@ -15,7 +15,7 @@
 namespace ww {
 
 
-Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL), m_changed(false) {
+Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL), m_iuux(NULL), m_changed(false) {
 
 	std::cout << "Slam::Slam" << std::endl;
 	
@@ -94,7 +94,7 @@ void Slam::initialize(Image* image) {
 	m_residual = new CvImage(w, h, Image::Float32);
 	m_gradient = new CvImage(w, h, Image::Float32, 2);
 	m_depth = new CvImage(w, h, Image::Float32);
-
+	m_iuux = new CvImage(w, h, Image::Float32, 3);
 }
 
 void Slam::push(Image* image) {
@@ -125,6 +125,34 @@ void Slam::preprocess(Image* image){
 		//m_frame->gradient[0]->save("aaa.jpg");
 		//m_frame->gradient[1]->save("bbb.jpg");
 		//m_frame->gray->subtract(m_key->gray, m_frame->residual);
+		
+		
+			
+		// unprojects each pixel for calc delta
+		int width = m_key->gray->width();
+		int height = m_key->gray->height();
+		int total = width * height;
+		const Intrinsic& intri = m_key->intrinsic;
+		float invf0 = 1 / intri.f;
+		int u, v;
+		Vec4f p;
+		float* p_depth = (float*)m_key->depth->data();
+		Vec4f* p_pts = (Vec4f*)m_key->points->data();
+
+		for (int i = 0; i < total; i++) {
+	
+			u = i % width;
+			v = i / width;
+		
+			p[0] = (u-intri.cx)*invf0;
+			p[1] = (v-intri.cy)*invf0;
+			p[2] = 1;
+			p[3] = p_depth[i];
+		
+			p_pts[i] = p;
+		}
+
+		
 	}
 	
 }
@@ -134,18 +162,21 @@ void Slam::update_pose(){
 	
 	if (!m_key || !m_frame) { return; }
 	
-	Vec3d delta_t;
+	Vec3d delta_t, delta_r;
 	
 	while(true) {
 	
 		prepare_residual();
 		delta_t = calc_delta_t();
+		delta_r = calc_delta_r();
 		//... collect other deltas
 		m_frame->pos += delta_t;
-		//current_camera->pose += delta_t;
+		MatrixToolbox::update_rotation(m_frame->rotation, delta_r);
 		
 		if (delta_t.length2() < 0.0001) { break; }
 	}
+	
+	MatrixToolbox::rectify_rotation(m_frame->rotation);
 }
 
 
@@ -207,6 +238,7 @@ void Slam::prepare_residual() {
 	float* p_dg = (float*)m_residual->data();
 	Vec2f* p_grad = (Vec2f*)m_gradient->data();
 	float* p_depth = (float*)m_depth->data();
+	Vec3f* p_iuux = (Vec3f*)m_iuux->data();
 	for (int i = 0; i < total; i++) {
 	
 		u = i % width;
@@ -253,6 +285,7 @@ void Slam::prepare_residual() {
 			p_dg[i] = 0;
 			p_grad[i] = 0;
 			p_depth[i] = 0;
+			p_iuux[i] = 0;
 		}
 
 	}
@@ -262,6 +295,60 @@ void Slam::prepare_residual() {
 
 Vec3d Slam::calc_delta_t() {
 
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	Vec2f* pGrad = (Vec2f*)m_gradient->data();
+	float* pDg = (float*)m_residual->data();
+	float* pDepth = (float*)m_depth->data();
+
+	int total = m_frame->gray->width() * m_frame->gray->height();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	
+	double a[3];
+	double w, temp;
+	Vec9d A;
+	Vec3d B;
+	
+	for (int i = 0; i < total; i++) {
+		if (!pMask[i]) { continue; }
+		w = 1;//(std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
+		temp = m_frame->intrinsic.f*pDepth[i];
+		a[0] = w*pGrad[i][0]*temp;
+		a[1] = w*pGrad[i][1]*temp;
+		a[2] = -(a[0]+a[1])*pDepth[i];
+		
+		A[0] += a[0]*a[0];
+		A[1] += a[0]*a[1];
+		A[2] += a[0]*a[2];
+		A[4] += a[1]*a[1];
+		A[5] += a[1]*a[2];
+		A[8] += a[2]*a[2];
+		
+		B[0] += a[0]*pDg[i];
+		B[1] += a[1]*pDg[i];
+		B[2] += a[2]*pDg[i];
+	}
+	
+	A[3] = A[1];
+	A[6] = A[2];
+	A[7] = A[5];
+	
+	A /= total;
+	B /= total;
+	
+	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
+	return Vec3d(
+		invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2],
+		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
+		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
+	);
+	
+
+}
+
+Vec3d Slam::calc_delta_r() {
+
+a;sdlkfjas;lkdfjsa;dl
 	if (!m_key || !m_frame) { return Vec3d(); }
 
 	Vec2f* pGrad = (Vec2f*)m_gradient->data();

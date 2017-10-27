@@ -27,6 +27,13 @@ Vec9d MatrixToolbox::inv_matrix_3x3(Vec9d& from) {
 	return to;
 }
 
+void MatrixToolbox::update_rotation(Vec9d& R, const Vec3d& eula) {
+
+}
+void MatrixToolbox::rectify_rotation(Vec9d& R) {
+
+}
+
 } // namespace
 
 
