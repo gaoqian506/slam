@@ -117,13 +117,14 @@ void Slam::preprocess(Image* image){
 	std::cout << "Slam::preprocess" << std::endl;
 	
 	if (m_key) {
-		if (!m_frame) { m_frame = new Camera(); }
+		if (!m_frame) {
+			m_frame = new Camera();
+			m_frame->points = new CvImage(m_frame->gray->width(), m_frame->gray->height(), Image::Float32, 4);
+		}
 		image->gray(m_frame->gray);
 		m_frame->gray->sobel_x(m_frame->gradient[0]);
 		m_frame->gray->sobel_y(m_frame->gradient[1]);
 		
-		
-		m_frame->points = new CvImage(m_frame->gray->width(), m_frame->gray->height(), Image::Float32, 4);
 		
 		//m_frame->gradient[0]->save("aaa.jpg");
 		//m_frame->gradient[1]->save("bbb.jpg");
