@@ -11,7 +11,7 @@ namespace ww {
 
 struct Intrinsic {
 	Intrinsic() : f(500), cx(320), cy(240) {
-	
+
 	}
 	double f;
 	double cx;

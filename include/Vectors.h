@@ -112,6 +112,10 @@ struct Vec9d {
 		return val[idx];
 	}
 	
+	const double& operator[] (int idx) const {
+		return val[idx];
+	}
+	
 	Vec9d& operator/=(const double& d) {
 	
 		val[0] /= d;

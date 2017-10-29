@@ -90,7 +90,7 @@ void Slam::initialize(Image* image) {
 	int h = image->height();
 	
 	m_mask = new CvImage(w, h, Image::UByte);
-	m_points = new CvImage(w, h, Image::Float32, 4);
+	//m_points = new CvImage(w, h, Image::Float32, 4);
 	m_residual = new CvImage(w, h, Image::Float32);
 	m_gradient = new CvImage(w, h, Image::Float32, 2);
 	m_depth = new CvImage(w, h, Image::Float32);
@@ -122,15 +122,21 @@ void Slam::preprocess(Image* image){
 		m_frame->gray->sobel_x(m_frame->gradient[0]);
 		m_frame->gray->sobel_y(m_frame->gradient[1]);
 		
+		
+		m_frame->points = new CvImage(m_frame->gray->width(), m_frame->gray->height(), Image::Float32, 4);
+		
 		//m_frame->gradient[0]->save("aaa.jpg");
 		//m_frame->gradient[1]->save("bbb.jpg");
 		//m_frame->gray->subtract(m_key->gray, m_frame->residual);
 		
 		
-			
+		
+		/*	
 		// unprojects each pixel for calc delta
 		int width = m_key->gray->width();
 		int height = m_key->gray->height();
+		
+		
 		int total = width * height;
 		const Intrinsic& intri = m_key->intrinsic;
 		float invf0 = 1 / intri.f;
@@ -151,6 +157,7 @@ void Slam::preprocess(Image* image){
 		
 			p_pts[i] = p;
 		}
+		*/
 
 		
 	}
@@ -176,7 +183,7 @@ void Slam::update_pose(){
 		if (delta_t.length2() < 0.0001) { break; }
 	}
 	
-	MatrixToolbox::rectify_rotation(m_frame->rotation);
+	//MatrixToolbox::rectify_rotation(m_frame->rotation);
 }
 
 
@@ -221,17 +228,18 @@ void Slam::prepare_residual() {
 	float invf0 = 1 / m_key->intrinsic.f;
 	const Intrinsic& intri1 = m_frame->intrinsic;
 	
-	Vec3d& trans = m_frame->pos;
+	const Vec3d& t = m_frame->pos;
+	const Vec9d& R = m_frame->rotation;
 	
 	int u, v;
 	Vec3f m;
-	Vec4f p;
+	Vec4f p0, p1;
 	//unsigned char* pubyte;
 	float* pfloat;
 	//short* pShort;
 
 	float* p_dkey = (float*)m_key->depth->data();
-	Vec4f* p_pts = (Vec4f*)m_points->data();
+	Vec4f* p_pts = (Vec4f*)m_frame->points->data();
 	Vec4f* p_key_pts = (Vec4f*)m_key->points->data();
 	unsigned char* p_mask = (unsigned char*)m_mask->data();
 	float* p_gkey = (float*)m_key->gray->data();
@@ -244,23 +252,23 @@ void Slam::prepare_residual() {
 		u = i % width;
 		v = i / width;
 		
-		p[0] = (u-intri0.cx)*invf0;
-		p[1] = (v-intri0.cy)*invf0;
-		p[2] = 1;
-		p[3] = p_dkey[i];
+		p0[0] = (u-intri0.cx)*invf0;
+		p0[1] = (v-intri0.cy)*invf0;
+		p0[2] = 1;
+		p0[3] = p_dkey[i];
 		
-		p_key_pts[i] = p;
+		p_key_pts[i] = p0;
 		
-		p[0] = p[0] + p[3] * trans[0];
-		p[1] = p[1] + p[3] * trans[1];
-		p[2] = p[2] + p[3] * trans[2];
+		p1[0] = R[0]*p0[0]+R[1]*p0[1]+R[2]*p0[2]+t[0]*p0[3];
+		p1[1] = R[3]*p0[0]+R[4]*p0[1]+R[5]*p0[2]+t[1]*p0[3];
+		p1[2] = R[6]*p0[0]+R[7]*p0[1]+R[8]*p0[2]+t[2]*p0[3];
+		p1[3] = p0[3];
+		p1 /= p1[2];
 		
-		p /= p[2];
+		p_pts[i] = p1;
 		
-		p_pts[i] = p;
-		
-		m[0] = intri1.f * p[0] + intri1.cx;
-		m[1] = intri1.f * p[1] + intri1.cy;
+		m[0] = intri1.f * p1[0] + intri1.cx;
+		m[1] = intri1.f * p1[1] + intri1.cy;
 		
 		if (m[0] > 0 && m[0] < width-1 && m[1] > 0 & m[1] < height-1) {
 		
@@ -277,7 +285,7 @@ void Slam::prepare_residual() {
 			pfloat = (float*)(m_frame->gradient[1]->data()) + v * width + u;
 			p_grad[i][1] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[width], pfloat[width+1], m[0], m[1]);
 
-			p_depth[i] = p[3];
+			p_depth[i] = p1[3];
 		
 		}
 		else { 
@@ -300,7 +308,7 @@ Vec3d Slam::calc_delta_t() {
 	Vec2f* pGrad = (Vec2f*)m_gradient->data();
 	float* pDg = (float*)m_residual->data();
 	float* pDepth = (float*)m_depth->data();
-
+	Vec4f* pPts = (Vec4f*)m_frame->points->data();
 	int total = m_frame->gray->width() * m_frame->gray->height();
 	unsigned char* pMask = (unsigned char*)m_mask->data();
 	
@@ -315,7 +323,7 @@ Vec3d Slam::calc_delta_t() {
 		temp = m_frame->intrinsic.f*pDepth[i];
 		a[0] = w*pGrad[i][0]*temp;
 		a[1] = w*pGrad[i][1]*temp;
-		a[2] = -(a[0]+a[1])*pDepth[i];
+		a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
 		
 		A[0] += a[0]*a[0];
 		A[1] += a[0]*a[1];
@@ -348,28 +356,37 @@ Vec3d Slam::calc_delta_t() {
 
 Vec3d Slam::calc_delta_r() {
 
-a;sdlkfjas;lkdfjsa;dl
+
 	if (!m_key || !m_frame) { return Vec3d(); }
 
-	Vec2f* pGrad = (Vec2f*)m_gradient->data();
+	Vec2f* pGrad = (Vec2f*)m_gradient->		data();
 	float* pDg = (float*)m_residual->data();
 	float* pDepth = (float*)m_depth->data();
+	Vec4f* pPts = (Vec4f*)m_frame->points->data();
+	Vec4f* pPts0 = (Vec4f*)m_key->points->data();
 
 	int total = m_frame->gray->width() * m_frame->gray->height();
 	unsigned char* pMask = (unsigned char*)m_mask->data();
 	
 	double a[3];
 	double w, temp;
+	Vec3d iuux;
 	Vec9d A;
 	Vec3d B;
 	
 	for (int i = 0; i < total; i++) {
 		if (!pMask[i]) { continue; }
 		w = 1;//(std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
+		
 		temp = m_frame->intrinsic.f*pDepth[i];
-		a[0] = w*pGrad[i][0]*temp;
-		a[1] = w*pGrad[i][1]*temp;
-		a[2] = -(a[0]+a[1])*pDepth[i];
+		iuux[0] = temp*pGrad[i][0]*w;
+		iuux[1] = temp*pGrad[i][1]*w;
+		iuux[2] = -(iuux[0]*pPts[i][0]+iuux[1]*pPts[i][1]);
+		
+		a[0] = pPts0[i][1]*iuux[2]-pPts0[i][2]*iuux[1];
+		a[1] = pPts0[i][2]*iuux[0]-pPts0[i][0]*iuux[2];
+		a[2] = pPts0[i][0]*iuux[1]-pPts0[i][1]*iuux[0];
+		
 		
 		A[0] += a[0]*a[0];
 		A[1] += a[0]*a[1];

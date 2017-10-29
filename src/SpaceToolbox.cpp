@@ -1,11 +1,13 @@
 
 #include "SpaceToolbox.h"
+#include <assert.h>
 
 namespace ww {
 
 
 std::vector<Vec3d> SpaceToolbox::unproject(const std::vector<Vec3d>& from) {
 
+	assert(0);
 	return std::vector<Vec3d>();
 	
 }

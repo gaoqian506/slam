@@ -2,6 +2,7 @@
 
 #include "GlToolbox.h"
 #include <iostream>
+#include <assert.h>
 
 namespace ww {
 
@@ -39,14 +40,22 @@ void GlToolbox::othorgonal(const Rectangle& rect) {
 }
 
 
-void GlToolbox::transform_to(const Vec3d& pose, const Vec3d& rotation) {
+void GlToolbox::transform_to(const Vec3d& pose, const Vec9d& rotation) {
+
+
+	double M[16] = {
+		rotation[0], rotation[1], rotation[2], pose[0],
+		rotation[3], rotation[4], rotation[5], pose[1],
+		rotation[6], rotation[7], rotation[8], pose[2]
+	};
 	glMatrixMode(GL_MODELVIEW);
-	glTranslated(pose[0], pose[1], pose[2]);
-	//glLoadIdentity();
+	glMultTransposeMatrixd(M);
+
 }
 
 void GlToolbox::transform_to(const double* pose, const double* rotation) {
 
+	assert(0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 }
@@ -56,6 +65,11 @@ void GlToolbox::transform_to(const double* pose, const double* rotation) {
 
 /********************************
 
+
+
+	assert(0);
+
+	glTranslated(pose[0], pose[1], pose[2]);
 
 		glOthorgonal(rect.left, rect.left+rect.width, bottom, top);
 		

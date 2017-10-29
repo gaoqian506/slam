@@ -12,8 +12,6 @@
 
 namespace ww {
 
-
-
 class Slam : public ViewContent {
 
 public:
@@ -48,7 +46,7 @@ private:
 	Camera* m_key;
 	Camera* m_frame;
 	Image* m_mask;
-	Image* m_points;
+	//Image* m_points;
 	Image* m_residual;
 	Image* m_gradient;
 	Image* m_depth;

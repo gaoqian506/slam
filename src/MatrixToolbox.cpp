@@ -20,18 +20,29 @@ Vec9d MatrixToolbox::inv_matrix_3x3(Vec9d& from) {
 	cv::Mat invA = cv::Mat(3, 3, CV_64F, to.ptr());
 	cv::invert(A, invA);
 	
-	Vec9d test;
-	cv::Mat T = A * invA;
-	memcpy(test.ptr(), T.data, sizeof(test));
-	cv::Mat T2 = A.inv();
+	//Vec9d test;
+	//cv::Mat T = A * invA;
+	//memcpy(test.ptr(), T.data, sizeof(test));
+	//cv::Mat T2 = A.inv();
 	return to;
 }
 
 void MatrixToolbox::update_rotation(Vec9d& R, const Vec3d& eula) {
 
+	double dR[9] = {
+		1, -eula[2], eula[1], 
+		eula[2], 1, -eula[0],
+		-eula[1], eula[0], 1
+	};
+	cv::Mat cvR = cv::Mat(3, 3, CV_64F, R.val);
+	cv::Mat cvdR = cv::Mat(3, 3, CV_64F, dR);
+	cvR = cvdR  * cvR;
+	
+	cv::SVD svd(cvR);
+	cvR = svd.u*svd.vt;
 }
 void MatrixToolbox::rectify_rotation(Vec9d& R) {
-
+	assert(0);
 }
 
 } // namespace

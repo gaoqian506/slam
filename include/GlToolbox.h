@@ -15,7 +15,7 @@ class GlToolbox {
 public:
 
 static void othorgonal(const Rectangle& rect);
-static void transform_to(const Vec3d& pose, const Vec3d& rotation);
+static void transform_to(const Vec3d& pose, const Vec9d& rotation);
 
 static void transform_to(const double* pose, const double* rotation);
 
