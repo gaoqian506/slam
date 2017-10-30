@@ -46,7 +46,7 @@ void Slam::start() {
 	while(m_source->read(image) && m_working) {
 		push(image);
 	}
-	
+	m_changed = false;
 	if (image) { delete image; }
 	
 	std::cout << "leave Slam::start" << std::endl;
@@ -119,7 +119,7 @@ void Slam::preprocess(Image* image){
 	if (m_key) {
 		if (!m_frame) {
 			m_frame = new Camera();
-			m_frame->points = new CvImage(m_frame->gray->width(), m_frame->gray->height(), Image::Float32, 4);
+			m_frame->points = new CvImage(image->width(), image->height(), Image::Float32, 4);
 		}
 		image->gray(m_frame->gray);
 		m_frame->gray->sobel_x(m_frame->gradient[0]);

@@ -45,6 +45,7 @@ View::View(ViewContent* vc) {
 	glutCreateWindow("OpenGL 3D View");
 	glutDisplayFunc(g_display);
 	glutIdleFunc(g_idle);
+	//glClearColor(0.233, 0.156, 0.43, 1);
 
 }
 
@@ -70,9 +71,10 @@ void View::run() {
 void View::display() {
 
 	std::cout << "View::display==========" << std::endl;
-	g_host = this;
+	//g_host = this;
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	
@@ -86,8 +88,6 @@ void View::display() {
 
 void View::draw_cameras() {
 	std::cout << "View::draw_cameras" << std::endl;
-	
-
 	
 	Camera** cameras = m_content->get_cameras();
 	int camera_count = m_content->get_camera_count();
@@ -105,9 +105,15 @@ void View::draw_cameras() {
 	
 	GlToolbox::othorgonal(bb);
 	
+	//glColor3d(1, 1, 1);
+
 		
 	glColor3d(0.87,0.623,3.222);
 	
+	//glBegin(GL_POINTS);
+	//glVertex3d(0, 0, 0);
+	//glVertex3d(1, 0, 1);
+	//glEnd();
 
 	for (int i = 0; i < camera_count; i++) {
 		draw_camera_instance(cameras[i]);
@@ -116,7 +122,6 @@ void View::draw_cameras() {
 	Camera* current = m_content->get_current_frame();
 	if (current) {
 		glColor3d(0.57,4.623,7.222);
-	
 		draw_camera_instance(current);
 	}
 	glMatrixMode(GL_PROJECTION);
@@ -137,14 +142,15 @@ void View::draw_mesh() {
 void View::draw_camera_instance(Camera* camera) {
 	std::cout << "View::draw_camera_instance" << std::endl;
 	
-
-	
 	GlToolbox::transform_to(camera->pos, camera->rotation);
+	
+	int width = camera->gray->width();
+	int height = camera->gray->height();
 	std::vector<Vec3d> image_corners;
 	image_corners.push_back(Vec3d(0, 0, 1));
-	image_corners.push_back(Vec3d(640, 0, 1));
-	image_corners.push_back(Vec3d(640, 480, 1));
-	image_corners.push_back(Vec3d(0, 480, 1));
+	image_corners.push_back(Vec3d(width, 0, 1));
+	image_corners.push_back(Vec3d(width, height, 1));
+	image_corners.push_back(Vec3d(0, height, 1));
 	//.. push other three corners
 	std::vector<Vec3d> sensor_corners = SpaceToolbox::unproject(camera->intrinsic, image_corners);
 
@@ -163,11 +169,9 @@ void View::draw_camera_instance(Camera* camera) {
 	glEnd();
 	
 	if (camera->points) {
-		int total = camera->points->width() * camera->points->height();
-	
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(4, GL_FLOAT, 0, camera->points->data());
-		 glDrawArrays(GL_POINTS, 0, total);
+		 glDrawArrays(GL_POINTS, 0, width*height);
 		glDisableClientState(GL_VERTEX_ARRAY);
 	}
 }
