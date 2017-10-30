@@ -21,6 +21,12 @@ clean:
 	
 run:
 	./$(TARGET)
+
+test1:
+	./$(TARGET) data/test1.mp4
+	
+test2:
+	./$(TARGET) data/test2.mp4
 	
 	
 debug:
