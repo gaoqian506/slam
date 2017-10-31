@@ -1,5 +1,6 @@
 
 #include "CvImage.h"
+#include "Config.h"
 
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp" 
@@ -115,6 +116,33 @@ void CvImage::save(const char* path) {
 	minMaxIdx(m_cv_mat, &minv, &maxv); 
 	cv::Mat stand = (m_cv_mat-minv) / (maxv-minv) * 255;
 	cv::imwrite(path, stand);
+}
+
+void CvImage::resize(Image*& out) {
+
+	if (out == NULL) {
+		out = new CvImage();
+	}
+	CvImage* cv_out = static_cast<CvImage*>(out);
+	
+	int w = m_cv_mat.cols;
+	int h = m_cv_mat.rows;
+	
+	if (w > Config::max_width) {
+	
+		int th = (int)(((double)Config::max_width)/w*h);
+	
+	cv::resize(m_cv_mat, cv_out->cv_mat(), cv::Size(Config::max_width, th));
+	}
+	else {
+		copy_to(out);
+	}
+}
+
+double CvImage::average2() {
+
+	return 0; 
+
 }
 
 //float CvImage::sample(const float& a, const float& b) {

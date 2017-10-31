@@ -37,6 +37,8 @@ private:
 	void prepare_residual();
 	Vec3d calc_delta_t();
 	Vec3d calc_delta_r();
+	void wipe_depth(const Vec3d& t);
+
 
 	VideoSource* m_source;
 	bool m_working;

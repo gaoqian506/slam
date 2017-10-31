@@ -1,5 +1,7 @@
 # slam
 
+a lsd slam reimplement.
+
 # compile
 
 sudo apt-get install libopencv-dev

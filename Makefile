@@ -22,11 +22,14 @@ clean:
 run:
 	./$(TARGET)
 
-test1:
-	./$(TARGET) data/test1.mp4
+test_longxuan:
+	./$(TARGET) data/videos/test1.mp4
 	
-test2:
-	./$(TARGET) data/test2.mp4
+test_texie:
+	./$(TARGET) data/videos/test2.mp4
+	
+test_move_left_8x8:
+	./$(TARGET) data/images/move_left_8x8/001.png data/images/move_left_8x8/002.png
 	
 	
 debug:

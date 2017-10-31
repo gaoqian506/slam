@@ -1,12 +1,12 @@
 
 
-#include "CvVideoSource.h"
+#include "FilmVideoSource.h"
 #include "CvImage.h"
 
 namespace ww {
 
 
-CvVideoSource::CvVideoSource(const char* path) {
+FilmVideoSource::FilmVideoSource(const char* path) {
 
 	m_capture.open(path);
 	assert(m_capture.isOpened());
@@ -16,7 +16,7 @@ CvVideoSource::CvVideoSource(const char* path) {
 }
 
 
-bool CvVideoSource::read(Image*& image) {
+bool FilmVideoSource::read(Image*& image) {
 
 	if (image == NULL) { 
 		image = new CvImage(); 

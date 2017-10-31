@@ -27,6 +27,8 @@ public:
 	
 	virtual void set(double v) { }
 	virtual void save(const char* path) { }
+	virtual void resize(Image*& out) { }
+	virtual double average2() { return 0; }
 	//virtual float sample(const float& a, const float& b) { return 0; }
 	
 

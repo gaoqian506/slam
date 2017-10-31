@@ -22,7 +22,11 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_source = vs;
 	memset(m_cameras, 0, sizeof(Camera*) * MAX_STATIC_CAMERA_COUNT);
 	
-
+	m_mask = NULL;
+	m_residual = NULL;
+	m_gradient = NULL;
+	m_depth = NULL;
+	m_iuux = NULL;
 	
 }
 
@@ -37,14 +41,12 @@ void Slam::start() {
 	//}
 	
 	Image* image = NULL;
-	
-	if (m_source->read(image)) {
-	
-		initialize(image);
-	}
+	Image* resized = NULL;
 	
 	while(m_source->read(image) && m_working) {
-		push(image);
+		image->resize(resized);
+		initialize(resized);
+		push(resized);
 	}
 	m_changed = false;
 	if (image) { delete image; }
@@ -86,6 +88,8 @@ bool Slam::changed() {
 
 void Slam::initialize(Image* image) {
 
+	if (m_mask) { return; }
+
 	int w = image->width();
 	int h = image->height();
 	
@@ -124,43 +128,7 @@ void Slam::preprocess(Image* image){
 		image->gray(m_frame->gray);
 		m_frame->gray->sobel_x(m_frame->gradient[0]);
 		m_frame->gray->sobel_y(m_frame->gradient[1]);
-		
-		
-		//m_frame->gradient[0]->save("aaa.jpg");
-		//m_frame->gradient[1]->save("bbb.jpg");
-		//m_frame->gray->subtract(m_key->gray, m_frame->residual);
-		
-		
-		
-		/*	
-		// unprojects each pixel for calc delta
-		int width = m_key->gray->width();
-		int height = m_key->gray->height();
-		
-		
-		int total = width * height;
-		const Intrinsic& intri = m_key->intrinsic;
-		float invf0 = 1 / intri.f;
-		int u, v;
-		Vec4f p;
-		float* p_depth = (float*)m_key->depth->data();
-		Vec4f* p_pts = (Vec4f*)m_key->points->data();
 
-		for (int i = 0; i < total; i++) {
-	
-			u = i % width;
-			v = i / width;
-		
-			p[0] = (u-intri.cx)*invf0;
-			p[1] = (v-intri.cy)*invf0;
-			p[2] = 1;
-			p[3] = p_depth[i];
-		
-			p_pts[i] = p;
-		}
-		*/
-
-		
 	}
 	
 }
@@ -170,18 +138,19 @@ void Slam::update_pose(){
 	
 	if (!m_key || !m_frame) { return; }
 	
-	Vec3d delta_t, delta_r;
+	//Vec3d delta_t, delta_r;
+	double pre_res = 0, res;
 	
 	while(true) {
 	
 		prepare_residual();
-		delta_t = calc_delta_t();
-		delta_r = calc_delta_r();
+		//m_frame->pos += calc_delta_t();
+		//MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
+		//wipe_depth(m_frame->pos);
 		//... collect other deltas
-		m_frame->pos += delta_t;
-		MatrixToolbox::update_rotation(m_frame->rotation, delta_r);
-		
-		if (delta_t.length2() < 0.0001) { break; }
+		res = m_residual->average2();
+		if (res - pre_res < 0.0001 || true) { break; }
+		else { pre_res = res; }
 	}
 	
 	//MatrixToolbox::rectify_rotation(m_frame->rotation);
@@ -360,7 +329,7 @@ Vec3d Slam::calc_delta_r() {
 
 	if (!m_key || !m_frame) { return Vec3d(); }
 
-	Vec2f* pGrad = (Vec2f*)m_gradient->		data();
+	Vec2f* pGrad = (Vec2f*)m_gradient->data();
 	float* pDg = (float*)m_residual->data();
 	float* pDepth = (float*)m_depth->data();
 	Vec4f* pPts = (Vec4f*)m_frame->points->data();
@@ -418,14 +387,88 @@ Vec3d Slam::calc_delta_r() {
 
 }
 
+void Slam::wipe_depth(const Vec3d& t) {
+	
+	int total = m_residual->width() * m_residual->height();
+	Vec2f* pGrad = (Vec2f*)m_gradient->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pdg = (float*)m_residual->data();
+	unsigned char* pm = (unsigned char*)m_mask->data();
+	float* pDepth = (float*)m_depth->data();
+	Vec4f* pPts = (Vec4f*)m_frame->points->data();
+	double lamda1 = 1, lamda2 = 1;
+	double a, w, temp;
+	Vec3d iuux;
+	for (int i = 0; i < total; i++) {
+	
+		if (!pm[i]) { continue; }
+		w = 1;
+		temp = m_frame->intrinsic.f*pDepth[i];
+		iuux[0] = temp*pGrad[i][0]*w;
+		iuux[1] = temp*pGrad[i][1]*w;
+		iuux[2] = -(iuux[0]*pPts[i][0]+iuux[1]*pPts[i][1]);
+		a = iuux[0]*t[0]+iuux[1]*t[1]+iuux[2]*t[2];
+		pd[i] = lamda1*a*pdg[i] / (a * a + lamda2);
+	
+	}
+}
+
 
 
 } // namespace
 
 
+
+
 /***************************
 
 
+
+		
+		
+		//m_frame->gradient[0]->save("aaa.jpg");
+		//m_frame->gradient[1]->save("bbb.jpg");
+		//m_frame->gray->subtract(m_key->gray, m_frame->residual);
+		
+		
+	
+		// unprojects each pixel for calc delta
+		int width = m_key->gray->width();
+		int height = m_key->gray->height();
+		
+		
+		int total = width * height;
+		const Intrinsic& intri = m_key->intrinsic;
+		float invf0 = 1 / intri.f;
+		int u, v;
+		Vec4f p;
+		float* p_depth = (float*)m_key->depth->data();
+		Vec4f* p_pts = (Vec4f*)m_key->points->data();
+
+		for (int i = 0; i < total; i++) {
+	
+			u = i % width;
+			v = i / width;
+		
+			p[0] = (u-intri.cx)*invf0;
+			p[1] = (v-intri.cy)*invf0;
+			p[2] = 1;
+			p[3] = p_depth[i];
+		
+			p_pts[i] = p;
+		}
+
+
+		
+	
+	if (m_source->read(image)) {
+		image->resize(resized);
+		initialize(resized);
+	}
+
+
+		//if (delta_t.length2() < 0.0001) { break; }
+		break;
 
 		//image->convert_to(m_key->depth, Image::Float32);
 				

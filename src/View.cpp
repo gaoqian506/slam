@@ -141,7 +141,7 @@ void View::draw_mesh() {
 
 void View::draw_camera_instance(Camera* camera) {
 	std::cout << "View::draw_camera_instance" << std::endl;
-	
+	if (!camera->gray) { return; }
 	GlToolbox::transform_to(camera->pos, camera->rotation);
 	
 	int width = camera->gray->width();

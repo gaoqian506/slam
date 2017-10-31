@@ -1,6 +1,6 @@
 
-#ifndef __WW_CV_VIDEO_SOURCE_HEADER__
-#define __WW_CV_VIDEO_SOURCE_HEADER__
+#ifndef __WW_FILM_VIDEO_SOURCE_HEADER__
+#define __WW_FILM_VIDEO_SOURCE_HEADER__
 
 
 #include "VideoSource.h"
@@ -11,10 +11,10 @@ namespace ww {
 
 
 
-class CvVideoSource : public VideoSource {
+class FilmVideoSource : public VideoSource {
 
 public:
-	CvVideoSource(const char* path);
+	FilmVideoSource(const char* path);
 
 	virtual bool read(Image*& image);
 
