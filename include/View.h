@@ -17,12 +17,20 @@ namespace ww {
 class View : public DisplayDelegate {
 
 public:
+
+	enum DisplayAspect {
+		DisplaySpace = 0,
+		DisplayImage, // 1
+		// ...
+	};
+
 	View(ViewContent* vc);
 	~View();
 	
 	void run();
 	void tick();
 	void display();
+	void keyboard(unsigned char key,int x,int y);
 	void start_content();
 	void draw_cameras();
 	void draw_points();
@@ -35,9 +43,11 @@ public:
 private:
 
 	Rectangle get_scene_bounding_box(Camera** cameras, int count);
+	
 
 	ViewContent* m_content;
 	pthread_t m_thread_id;
+	DisplayAspect m_display_aspect;
 	
 
 

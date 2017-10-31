@@ -34,3 +34,4 @@ test_move_left_8x8:
 	
 debug:
 	gdb ./$(TARGET)
+

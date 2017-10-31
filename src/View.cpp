@@ -21,6 +21,9 @@ void g_idle(void) {
 	if (g_host && ((View*)g_host)->content()->changed()) { ((View*)g_host)->display(); }
 }
 
+void g_keyboard(unsigned char key,int x,int y) {
+	((View*)g_host)->keyboard(key, x, y);
+}
 
 
 void* g_thread(void*) {
@@ -45,7 +48,11 @@ View::View(ViewContent* vc) {
 	glutCreateWindow("OpenGL 3D View");
 	glutDisplayFunc(g_display);
 	glutIdleFunc(g_idle);
+	glutKeyboardFunc(g_keyboard);
 	//glClearColor(0.233, 0.156, 0.43, 1);
+	
+	g_host = this;
+	m_display_aspect = Orthogonal;
 
 }
 
@@ -60,7 +67,7 @@ View::~View() {
 void View::run() {
 
 	std::cout << "View::run" << std::endl;
-	g_host = this;
+
 	
 
 	pthread_create(&m_thread_id, NULL, g_thread, NULL);
@@ -78,12 +85,33 @@ void View::display() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	
-	glRotatef(-90, 1, 0, 0);
-	draw_cameras();
-	draw_points();
-	draw_mesh();
+	switch (m_display_aspect) {
+	case Orthogonal:
+		glRotatef(-90, 1, 0, 0);
+		draw_cameras();
+		draw_points();
+		draw_mesh();
+		break;
+	case Residual:
+		draw_image(m_content->get_debug_image(m_display_index));
+		break;
+	}
+	
+
 
 	glutSwapBuffers();
+}
+
+void View::keyboard(unsigned char key,int x,int y) {
+
+		switch(key) {
+		//Enter
+		case 49:	// DisplaySpace
+		case 50:	// DisplayImage
+			m_display_aspect = (DisplayAspect)(key-49);
+			break;
+		}
+
 }
 
 void View::draw_cameras() {
