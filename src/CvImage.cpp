@@ -142,6 +142,20 @@ void CvImage::resize(Image*& out) {
 double CvImage::average2() {
 
 	return 0; 
+}
+
+Image::DataType CvImage::type() {
+
+	return (DataType)(m_cv_mat.type() % 8);
+
+}
+int CvImage::channels() {
+	return m_cv_mat.channels();
+}
+
+bool CvImage::empty() {
+
+	return m_cv_mat.empty();
 
 }
 

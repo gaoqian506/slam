@@ -12,7 +12,7 @@ class Image {
 
 public:
 
-	enum DataType{ Float32, UByte };
+	enum DataType { UByte, Byte, UShort, Short, Int, Float32, Float64 };
 
 	virtual void* data() { return 0; }
 	virtual int width() { return 0; }
@@ -29,6 +29,9 @@ public:
 	virtual void save(const char* path) { }
 	virtual void resize(Image*& out) { }
 	virtual double average2() { return 0; }
+	virtual DataType type() { return UByte; }
+	virtual int channels() { return 0; }
+	virtual bool empty() { return true; }
 	//virtual float sample(const float& a, const float& b) { return 0; }
 	
 

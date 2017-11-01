@@ -23,6 +23,7 @@ public:
 	virtual int get_camera_count();
 	virtual Camera* get_current_frame();
 	virtual bool changed();
+	virtual Image* get_debug_image(const int& idx);
 
 
 private:

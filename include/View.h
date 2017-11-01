@@ -8,6 +8,7 @@
 #include "VideoSource.h"
 #include "Camera.h"
 #include "Rectangle.h"
+#include "Vectors.h"
 #include <pthread.h>
 
 namespace ww {
@@ -32,6 +33,8 @@ public:
 	void display();
 	void keyboard(unsigned char key,int x,int y);
 	void start_content();
+	void draw_content();
+	void draw_image(Image* image);
 	void draw_cameras();
 	void draw_points();
 	void draw_mesh();
@@ -48,6 +51,9 @@ private:
 	ViewContent* m_content;
 	pthread_t m_thread_id;
 	DisplayAspect m_display_aspect;
+	int m_display_index;
+	Vec2d m_trans_2d;
+	unsigned int m_gl_texture;
 	
 
 

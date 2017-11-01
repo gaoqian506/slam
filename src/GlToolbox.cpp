@@ -39,6 +39,13 @@ void GlToolbox::othorgonal(const Rectangle& rect) {
 
 }
 
+void GlToolbox::orthogonal_pixel() {
+	int vp[4];
+	glGetIntegerv(GL_VIEWPORT, vp);
+
+	glOrtho(-vp[2]/2, vp[2]/2, -vp[3]/2, vp[3], -1, 1);
+}
+
 
 void GlToolbox::transform_to(const Vec3d& pose, const Vec9d& rotation) {
 
@@ -62,7 +69,55 @@ void GlToolbox::transform_to(const double* pose, const double* rotation) {
 }
 
 
+void GlToolbox::setup_texture(GLuint m_gl_texture, Image* image) {
+
+	//glEnable(GL_TEXTURE_2D);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glBindTexture(GL_TEXTURE_2D, m_gl_texture);
+
+	if (image && !image->empty()) {
+
+		unsigned int internalFormat = 0, format = 0, type = 0;
+		if (image->type() == Image::UByte && image->channels() == 4)
+		{ internalFormat = GL_RGBA; format = GL_RGBA; type = GL_UNSIGNED_BYTE; }
+		else if (image->type() == Image::UByte && image->channels() == 1) 
+		{ internalFormat = GL_LUMINANCE;  format = GL_LUMINANCE; type = GL_UNSIGNED_BYTE; }
+		else if (image->type() == Image::UByte && image->channels() == 3) 
+		{ internalFormat = GL_RGB; format = GL_RGB; type = GL_UNSIGNED_BYTE; }
+		else if (image->type() == Image::Short && image->channels() == 1)
+		{ internalFormat = GL_LUMINANCE; format = GL_LUMINANCE; type = GL_UNSIGNED_SHORT; }
+		else if (image->type() == Image::Float32 && image->channels() == 1)
+		{ internalFormat = GL_LUMINANCE; format = GL_LUMINANCE; type = GL_FLOAT; }
+		else if (image->type() == Image::Float32 && image->channels() == 1)
+		{ internalFormat = GL_RGB; format = GL_RGB; type = GL_FLOAT; }
+		else { assert(0); }
+
+
+		int w = image->width();
+		int h = image->height();
+
+		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+		//glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+		//glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, image->data());
+	}
+	else {
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 0, 0, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, 0);
+	}
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	assert(0);
+
 }
+
+}
+
+
 
 /********************************
 

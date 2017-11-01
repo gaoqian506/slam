@@ -86,6 +86,13 @@ bool Slam::changed() {
 	return m_changed;
 }
 
+Image* Slam::get_debug_image(const int& idx) {
+
+	return m_residual;
+	//assert(0);
+	//return NULL;
+}
+
 void Slam::initialize(Image* image) {
 
 	if (m_mask) { return; }

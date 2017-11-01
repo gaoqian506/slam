@@ -65,6 +65,39 @@ struct Vec4f {
 };
 
 
+struct Vec2d {
+
+	Vec2d(const double& a = 0, const double& b = 0) {
+	
+		val[0] = a;
+		val[1] = b;
+	}
+	
+	double& operator[](int idx) {
+		return val[idx];
+	}
+	
+	const double& operator[](int idx) const {
+		return val[idx];
+	}
+	
+	Vec2d& operator+=(const Vec2d& right) {
+	
+		val[0] += right[0];
+		val[1] += right[0];
+		return *this;
+	}
+	Vec2d& operator/=(const double& d) {
+	
+		val[0] /= d;
+		val[1] /= d;
+		return *this;
+	}
+	
+	double length2() { return val[0]*val[0]+val[1]*val[1]; }
+	double val[2];
+};
+
 
 struct Vec3d {
 

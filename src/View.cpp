@@ -6,6 +6,7 @@
 #include <GL/glut.h>
 #include <iostream>
 #include <vector>
+#include <assert.h>
 
 
 namespace ww {
@@ -52,7 +53,11 @@ View::View(ViewContent* vc) {
 	//glClearColor(0.233, 0.156, 0.43, 1);
 	
 	g_host = this;
-	m_display_aspect = Orthogonal;
+	m_display_aspect = DisplaySpace;
+	m_display_index = 0;
+
+	glGenTextures(1, &m_gl_texture);
+
 
 }
 
@@ -84,15 +89,12 @@ void View::display() {
 	
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	
+
 	switch (m_display_aspect) {
-	case Orthogonal:
-		glRotatef(-90, 1, 0, 0);
-		draw_cameras();
-		draw_points();
-		draw_mesh();
+	case DisplaySpace:
+		draw_content();
 		break;
-	case Residual:
+	case DisplayImage:
 		draw_image(m_content->get_debug_image(m_display_index));
 		break;
 	}
@@ -112,6 +114,51 @@ void View::keyboard(unsigned char key,int x,int y) {
 			break;
 		}
 
+}
+
+void View::draw_content() {
+
+	glColor3d(1, 1, 1);
+	glBegin(GL_LINE_LOOP);
+	glVertex3d(-0.5, -0.5, 0);
+	glVertex3d(-0.5, +0.5, 0);
+	glVertex3d(+0.5, +0.5, 0);
+	glVertex3d(+0.5, -0.5, 0);
+	glEnd();
+
+}
+
+void View::draw_image(Image* image) {
+
+	if(!image) { return; }
+	
+	GlToolbox::orthogonal_pixel();
+	int w = image->width();
+	int h = image->height();
+	
+	GlToolbox::setup_texture(m_gl_texture, image);
+	glBindTexture(GL_TEXTURE_2D, m_gl_texture);
+	glEnable(GL_TEXTURE_2D);
+
+	glBegin(GL_QUADS);
+	glTexCoord2i(0, 0); glVertex2d(-w/2, -h/2);
+	glTexCoord2i(1, 0); glVertex2d(-w/2, +h/2);
+	glTexCoord2i(1, 1); glVertex2d(+w/2, +h/2);
+	glTexCoord2i(0, 1); glVertex2d(+w/2, -h/2);
+	glEnd();
+
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+
+
+	glColor3d(1, 0, 0);
+	glBegin(GL_LINE_LOOP);
+	glVertex3d(-0.5, -0.5, 0);
+	glVertex3d(-0.5, +0.5, 0);
+	glVertex3d(+0.5, +0.5, 0);
+	glVertex3d(+0.5, -0.5, 0);
+	glEnd();
 }
 
 void View::draw_cameras() {
@@ -250,8 +297,17 @@ Rectangle View::get_scene_bounding_box(Camera** cameras, int count) {
 
 } // namespace
 
-/*
+/****************************************
 
+
+
+				//setup_eye_3d();
+		//draw_image(m_content->get_debug_image(m_display_index));
+
+		//glRotatef(-90, 1, 0, 0);
+		//draw_cameras();
+		//draw_points();
+		//draw_mesh();
 
 	glBegin(GL_POINTS);
 	glVertex3d(0, 0, 0);
