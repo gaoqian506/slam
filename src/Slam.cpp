@@ -15,7 +15,7 @@
 namespace ww {
 
 
-Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL), m_iuux(NULL), m_changed(false) {
+Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL),  m_changed(false) {
 
 	std::cout << "Slam::Slam" << std::endl;
 	
@@ -42,7 +42,6 @@ void Slam::start() {
 	
 	Image* image = NULL;
 	Image* resized = NULL;
-	
 	while(m_source->read(image) && m_working) {
 		image->resize(resized);
 		initialize(resized);
@@ -88,7 +87,16 @@ bool Slam::changed() {
 
 Image* Slam::get_debug_image(const int& idx) {
 
-	return m_residual;
+	if (idx == 0) {
+		return m_key ? m_key->gray : NULL;
+	}
+	else if (idx == 1) {
+		return m_frame ? m_frame->gray : NULL;
+	}
+	else {
+		return NULL;
+	}
+	//m_residual;
 	//assert(0);
 	//return NULL;
 }
@@ -105,7 +113,7 @@ void Slam::initialize(Image* image) {
 	m_residual = new CvImage(w, h, Image::Float32);
 	m_gradient = new CvImage(w, h, Image::Float32, 2);
 	m_depth = new CvImage(w, h, Image::Float32);
-	m_iuux = new CvImage(w, h, Image::Float32, 3);
+	//m_iuux = new CvImage(w, h, Image::Float32, 3);
 }
 
 void Slam::push(Image* image) {
@@ -223,7 +231,7 @@ void Slam::prepare_residual() {
 	float* p_dg = (float*)m_residual->data();
 	Vec2f* p_grad = (Vec2f*)m_gradient->data();
 	float* p_depth = (float*)m_depth->data();
-	Vec3f* p_iuux = (Vec3f*)m_iuux->data();
+	//Vec3f* p_iuux = (Vec3f*)m_iuux->data();
 	for (int i = 0; i < total; i++) {
 	
 		u = i % width;
@@ -270,7 +278,7 @@ void Slam::prepare_residual() {
 			p_dg[i] = 0;
 			p_grad[i] = 0;
 			p_depth[i] = 0;
-			p_iuux[i] = 0;
+			//p_iuux[i] = 0;
 		}
 
 	}

@@ -43,7 +43,8 @@ void GlToolbox::orthogonal_pixel() {
 	int vp[4];
 	glGetIntegerv(GL_VIEWPORT, vp);
 
-	glOrtho(-vp[2]/2, vp[2]/2, -vp[3]/2, vp[3], -1, 1);
+	glOrtho(-vp[2]>>1, vp[2]>>1, vp[3]>>1, -vp[3]>>1, -1, 1);
+	//glOrtho(-300, 300, -300, 300, -1, 1);
 }
 
 
@@ -111,11 +112,9 @@ void GlToolbox::setup_texture(GLuint m_gl_texture, Image* image) {
 	}
 
 	glBindTexture(GL_TEXTURE_2D, 0);
-	assert(0);
-
 }
 
-}
+} // namespace
 
 
 

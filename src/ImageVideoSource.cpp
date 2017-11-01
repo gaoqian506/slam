@@ -5,7 +5,7 @@
 namespace ww {
 
 
-ImageVideoSource::ImageVideoSource(char** names, const int count) : m_looply(false) {
+ImageVideoSource::ImageVideoSource(char** names, const int count) : m_looply(true) {
 
 	for (int i = 0; i < count; i++) {
 		m_images.push_back(cv::imread(names[i]));

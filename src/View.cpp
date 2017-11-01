@@ -26,6 +26,11 @@ void g_keyboard(unsigned char key,int x,int y) {
 	((View*)g_host)->keyboard(key, x, y);
 }
 
+void g_special(int key, int x, int y) {
+	((View*)g_host)->special(key, x, y);
+}
+
+
 
 void* g_thread(void*) {
 
@@ -50,10 +55,11 @@ View::View(ViewContent* vc) {
 	glutDisplayFunc(g_display);
 	glutIdleFunc(g_idle);
 	glutKeyboardFunc(g_keyboard);
+	glutSpecialFunc(g_special);
 	//glClearColor(0.233, 0.156, 0.43, 1);
 	
 	g_host = this;
-	m_display_aspect = DisplaySpace;
+	m_display_aspect = DisplayImage;
 	m_display_index = 0;
 
 	glGenTextures(1, &m_gl_texture);
@@ -112,8 +118,22 @@ void View::keyboard(unsigned char key,int x,int y) {
 		case 50:	// DisplayImage
 			m_display_aspect = (DisplayAspect)(key-49);
 			break;
+		
 		}
 
+}
+
+void View::special(int key,int x,int y) {
+
+	switch(key) {
+
+	case GLUT_KEY_UP:
+		m_display_index++;
+		break;
+	case GLUT_KEY_DOWN:
+		m_display_index = m_display_index ? m_display_index-1 : 0;
+		break;
+	}
 }
 
 void View::draw_content() {
@@ -131,6 +151,8 @@ void View::draw_content() {
 void View::draw_image(Image* image) {
 
 	if(!image) { return; }
+
+	//glScaled(10, 10, 10);
 	
 	GlToolbox::orthogonal_pixel();
 	int w = image->width();
@@ -142,23 +164,14 @@ void View::draw_image(Image* image) {
 
 	glBegin(GL_QUADS);
 	glTexCoord2i(0, 0); glVertex2d(-w/2, -h/2);
-	glTexCoord2i(1, 0); glVertex2d(-w/2, +h/2);
+	glTexCoord2i(0, 1); glVertex2d(-w/2, +h/2);
 	glTexCoord2i(1, 1); glVertex2d(+w/2, +h/2);
-	glTexCoord2i(0, 1); glVertex2d(+w/2, -h/2);
+	glTexCoord2i(1, 0); glVertex2d(+w/2, -h/2);
 	glEnd();
 
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-
-
-	glColor3d(1, 0, 0);
-	glBegin(GL_LINE_LOOP);
-	glVertex3d(-0.5, -0.5, 0);
-	glVertex3d(-0.5, +0.5, 0);
-	glVertex3d(+0.5, +0.5, 0);
-	glVertex3d(+0.5, -0.5, 0);
-	glEnd();
 }
 
 void View::draw_cameras() {
@@ -300,6 +313,15 @@ Rectangle View::get_scene_bounding_box(Camera** cameras, int count) {
 /****************************************
 
 
+
+
+	glColor3d(1, 0, 0);
+	glBegin(GL_LINE_LOOP);
+	glVertex3d(-200, -200, 0);
+	glVertex3d(-200, +200, 0);
+	glVertex3d(+200, +200, 0);
+	glVertex3d(+200, -200, 0);
+	glEnd();
 
 				//setup_eye_3d();
 		//draw_image(m_content->get_debug_image(m_display_index));

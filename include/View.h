@@ -32,6 +32,7 @@ public:
 	void tick();
 	void display();
 	void keyboard(unsigned char key,int x,int y);
+	void special(int key,int x,int y);
 	void start_content();
 	void draw_content();
 	void draw_image(Image* image);
