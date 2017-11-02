@@ -118,6 +118,10 @@ void View::keyboard(unsigned char key,int x,int y) {
 		case 50:	// DisplayImage
 			m_display_aspect = (DisplayAspect)(key-49);
 			break;
+
+		case 'a':	// push manauly
+			m_content->push_manauly();
+			break;
 		
 		}
 

@@ -2,7 +2,9 @@
 
 #include "Slam.h"
 #include "MatrixToolbox.h"
+#include "SpaceToolbox.h"
 #include "CvImage.h"
+#include "Config.h"
 #include <iostream>
 #include <memory.h>
 #include <cmath>
@@ -34,6 +36,7 @@ void Slam::start() {
 
 
 	std::cout << "Slam::start" << std::endl;
+	if (Config::manually_content) { return; }
 	m_working = true;
 
 	//for(int i = 0; i < 10; i++) {
@@ -49,6 +52,7 @@ void Slam::start() {
 	}
 	m_changed = false;
 	if (image) { delete image; }
+	if (resized) { delete resized; }
 	
 	std::cout << "leave Slam::start" << std::endl;
 
@@ -101,6 +105,27 @@ Image* Slam::get_debug_image(const int& idx) {
 	//return NULL;
 }
 
+void Slam::push_manauly() {
+
+	std::cout << "Slam::push_manauly" << std::endl;
+
+	if (Config::manually_content) { return; }
+	//m_working = true;
+	Image* image = NULL;
+	Image* resized = NULL;
+	if(m_source->read(image)) {
+		image->resize(resized);
+		initialize(resized);
+		push(resized);
+	}
+	//m_changed = false;
+	if (image) { delete image; }
+	if (resized) { delete resized; }
+	
+	std::cout << "leave Slam::start" << std::endl;
+
+}
+
 void Slam::initialize(Image* image) {
 
 	if (m_mask) { return; }
@@ -137,8 +162,12 @@ void Slam::preprocess(Image* image){
 	
 	if (m_key) {
 		if (!m_frame) {
+			int w = image->width();
+			int h = image->height();
 			m_frame = new Camera();
-			m_frame->points = new CvImage(image->width(), image->height(), Image::Float32, 4);
+			SpaceToolbox::init_intrinsic(m_frame->intrinsic, 45, w, h);
+		
+			m_frame->points = new CvImage(w, h, Image::Float32, 4);
 		}
 		image->gray(m_frame->gray);
 		m_frame->gray->sobel_x(m_frame->gradient[0]);
@@ -178,14 +207,17 @@ void Slam::update_keyframe(Image* image){
 
 	if (m_key == NULL) {
 	
+		int w = image->width();
+		int h = image->height();
 		m_key = new Camera();
+		SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
 		
 		image->copy_to(m_key->original);
 		image->gray(m_key->gray);
-		m_key->depth = new CvImage(image->width(), image->height(), Image::Float32);
+		m_key->depth = new CvImage(w, h, Image::Float32);
 
 		m_key->depth->set(0.1);
-		m_key->points = new CvImage(image->width(), image->height(), Image::Float32, 4);
+		m_key->points = new CvImage(w, h, Image::Float32, 4);
 
 		m_keyframes.push_back(m_key);
 		m_cameras[m_camera_count] = m_key;

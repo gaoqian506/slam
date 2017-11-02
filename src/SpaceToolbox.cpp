@@ -1,6 +1,7 @@
 
 #include "SpaceToolbox.h"
 #include <assert.h>
+#include <math.h>
 
 namespace ww {
 
@@ -30,5 +31,14 @@ std::vector<Vec3d> SpaceToolbox::unproject(const Intrinsic& intrinsic, const std
 	
 }
 
+void SpaceToolbox::init_intrinsic(Intrinsic& intri, double fovy, int width, int height) {
+
+	double theta = fovy / 180 * M_PI;
+	intri.f = height * 0.5 / tan(0.5*theta);
+	intri.cx = width * 0.5;
+	intri.cy = height * 0.5;
+
 }
+
+} // namespace
 

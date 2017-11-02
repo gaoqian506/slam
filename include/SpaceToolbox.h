@@ -18,6 +18,8 @@ static std::vector<Vec3d> unproject(const std::vector<Vec3d>& from);
 
 static std::vector<Vec3d> unproject(const Intrinsic& intrinsic, const std::vector<Vec3d>& from);
 
+static void init_intrinsic(Intrinsic& intri, double fovy, int width, int height);
+
 };
 
 

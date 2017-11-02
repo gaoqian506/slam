@@ -10,6 +10,7 @@ class Config {
 public:
 
 	static int max_width;
+	static bool manually_content;
 
 
 };
