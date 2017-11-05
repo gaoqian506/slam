@@ -141,7 +141,15 @@ void CvImage::resize(Image*& out) {
 
 double CvImage::average2() {
 
-	return 0; 
+	assert(0);
+	cv::Mat abs = cv::abs(m_cv_mat);
+	return cv::mean(abs)[0]; 
+}
+
+double CvImage::abs_mean() {
+
+	cv::Mat abs = cv::abs(m_cv_mat);
+	return cv::mean(abs)[0]; 
 }
 
 Image::DataType CvImage::type() {

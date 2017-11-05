@@ -29,6 +29,7 @@ public:
 	virtual void save(const char* path) { }
 	virtual void resize(Image*& out) { }
 	virtual double average2() { return 0; }
+	virtual double abs_mean() { return 0; }
 	virtual DataType type() { return UByte; }
 	virtual int channels() { return 0; }
 	virtual bool empty() { return true; }

@@ -8,6 +8,7 @@
 #include <iostream>
 #include <memory.h>
 #include <cmath>
+#include <stdio.h>
 
 
 #define SAMPLE_2D( v0, v1, v2, v3, a, b) \
@@ -29,6 +30,8 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_gradient = NULL;
 	m_depth = NULL;
 	m_iuux = NULL;
+
+	m_pixel_info[0] = 0;
 	
 }
 
@@ -109,7 +112,6 @@ void Slam::push_manauly() {
 
 	std::cout << "Slam::push_manauly" << std::endl;
 
-	if (Config::manually_content) { return; }
 	//m_working = true;
 	Image* image = NULL;
 	Image* resized = NULL;
@@ -124,6 +126,23 @@ void Slam::push_manauly() {
 	
 	std::cout << "leave Slam::start" << std::endl;
 
+}
+
+void Slam::func_manualy(int idx) {
+
+	switch (idx) {
+
+	case 1:
+		prepare_residual();
+		break;
+	}
+}
+
+
+char* Slam::pixel_info(const Vec2d& u) {
+	sprintf(m_pixel_info, "%f, %f\n", u[0], u[1]);
+	printf("%s", m_pixel_info);
+	return m_pixel_info;
 }
 
 void Slam::initialize(Image* image) {
@@ -149,7 +168,7 @@ void Slam::push(Image* image) {
 	update_keyframe(image);
 	update_map();
 
-	m_changed = true;
+//	m_changed = true;
 //	if (m_display_delegate) {
 //		m_display_delegate->display_with(this);
 //	}
@@ -179,7 +198,8 @@ void Slam::preprocess(Image* image){
 void Slam::update_pose(){
 
 	std::cout << "Slam::update_pose" << std::endl;
-	
+
+	if (Config::manually_content) { return; }
 	if (!m_key || !m_frame) { return; }
 	
 	//Vec3d delta_t, delta_r;
@@ -188,16 +208,15 @@ void Slam::update_pose(){
 	while(true) {
 	
 		prepare_residual();
-		//m_frame->pos += calc_delta_t();
-		//MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
-		//wipe_depth(m_frame->pos);
+		res = m_residual->abs_mean();
+		if (res - pre_res < 0.0001) { break; }
+		m_frame->pos += calc_delta_t();
+		MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
+		wipe_depth(m_frame->pos);
 		//... collect other deltas
-		res = m_residual->average2();
-		if (res - pre_res < 0.0001 || true) { break; }
-		else { pre_res = res; }
+		pre_res = res;
 	}
-	
-	//MatrixToolbox::rectify_rotation(m_frame->rotation);
+
 }
 
 
@@ -470,6 +489,9 @@ void Slam::wipe_depth(const Vec3d& t) {
 /***************************
 
 
+
+	
+	//MatrixToolbox::rectify_rotation(m_frame->rotation);
 
 		
 		

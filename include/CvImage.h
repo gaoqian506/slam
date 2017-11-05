@@ -36,6 +36,7 @@ public:
 	//virtual float sample(const float& a, const float& b) { return 0; }
 	virtual void resize(Image*& out);
 	virtual double average2();
+	virtual double abs_mean();
 	virtual DataType type();
 	virtual int channels();
 	virtual bool empty();

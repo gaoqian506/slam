@@ -114,6 +114,21 @@ void GlToolbox::setup_texture(GLuint m_gl_texture, Image* image) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+
+Vec2d GlToolbox::screen_to_image(const double& x, const double& y, const double& s, const int& w, const int& h) {
+
+
+	int vp[4];
+	glGetIntegerv(GL_VIEWPORT, vp);
+	double is = 1/s;
+	double iA[9] = {
+		is, 0, (s*w-vp[2])*0.5*is,
+		0, is, (s*h-vp[3])*0.5*is
+	};
+
+	return Vec2d(iA[0]*x+iA[2], iA[4]*y+iA[5]);
+}
+
 } // namespace
 
 

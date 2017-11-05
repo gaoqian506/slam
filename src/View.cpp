@@ -30,6 +30,17 @@ void g_special(int key, int x, int y) {
 	((View*)g_host)->special(key, x, y);
 }
 
+void g_mouse_func(int button, int state, int x, int y) {
+	((View*)g_host)->mouse(button, state, x, y);
+
+}
+
+void g_passive_mouse_move_func(int x, int y) {
+
+	((View*)g_host)->passive_mouse_move(x, y);
+	//std::cout << x << "," << y << std::endl;
+}
+
 
 
 void* g_thread(void*) {
@@ -53,16 +64,20 @@ View::View(ViewContent* vc) {
 	glutInitWindowSize(600, 600);
 	glutCreateWindow("OpenGL 3D View");
 	glutDisplayFunc(g_display);
-	glutIdleFunc(g_idle);
+	//glutIdleFunc(g_idle);
 	glutKeyboardFunc(g_keyboard);
 	glutSpecialFunc(g_special);
-	//glClearColor(0.233, 0.156, 0.43, 1);
+	glutMouseFunc(g_mouse_func);
+	glutPassiveMotionFunc(g_passive_mouse_move_func);
+
 	
 	g_host = this;
 	m_display_aspect = DisplayImage;
 	m_display_index = 0;
+	m_trans_2d[0] = 1;
 
 	glGenTextures(1, &m_gl_texture);
+	m_current_image = 0;
 
 
 }
@@ -121,8 +136,12 @@ void View::keyboard(unsigned char key,int x,int y) {
 
 		case 'a':	// push manauly
 			m_content->push_manauly();
+			glutPostRedisplay();
 			break;
-		
+		case 'b':	// manualy function 1
+			m_content->func_manualy(1);
+			glutPostRedisplay();
+			break;
 		}
 
 }
@@ -133,10 +152,37 @@ void View::special(int key,int x,int y) {
 
 	case GLUT_KEY_UP:
 		m_display_index++;
+		glutPostRedisplay();
 		break;
 	case GLUT_KEY_DOWN:
 		m_display_index = m_display_index ? m_display_index-1 : 0;
+		glutPostRedisplay();
 		break;
+	}
+}
+
+void View::mouse(int button, int state, int x, int y) {
+
+	switch(button) {
+
+	case 3:
+		m_trans_2d[0] *= 1.25;
+		glutPostRedisplay();
+		break;
+	case 4:
+		m_trans_2d[0] *= 0.8;
+		glutPostRedisplay();
+		break;
+	}
+
+}
+
+void View::passive_mouse_move(int x, int y) {
+
+	if (m_current_image) {
+		Vec2d u = GlToolbox::screen_to_image(x, y, m_trans_2d[0], m_current_image->width(), m_current_image->height());
+		m_pixel_info = m_content->pixel_info(u);
+		glutPostRedisplay();
 	}
 }
 
@@ -159,6 +205,7 @@ void View::draw_image(Image* image) {
 	//glScaled(10, 10, 10);
 	
 	GlToolbox::orthogonal_pixel();
+	glScaled(m_trans_2d[0], m_trans_2d[0], 1);
 	int w = image->width();
 	int h = image->height();
 	
@@ -175,6 +222,8 @@ void View::draw_image(Image* image) {
 
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
+
+	m_current_image = image;
 
 }
 
@@ -317,6 +366,9 @@ Rectangle View::get_scene_bounding_box(Camera** cameras, int count) {
 /****************************************
 
 
+
+	//glutMouseWheelFunc(g_mouse_wheel);
+	//glClearColor(0.233, 0.156, 0.43, 1);
 
 
 	glColor3d(1, 0, 0);

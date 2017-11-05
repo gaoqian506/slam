@@ -33,6 +33,8 @@ public:
 	void display();
 	void keyboard(unsigned char key,int x,int y);
 	void special(int key,int x,int y);
+	void mouse(int button, int state, int x, int y);
+	void passive_mouse_move(int x, int y);
 	void start_content();
 	void draw_content();
 	void draw_image(Image* image);
@@ -53,8 +55,10 @@ private:
 	pthread_t m_thread_id;
 	DisplayAspect m_display_aspect;
 	int m_display_index;
-	Vec2d m_trans_2d;
+	Vec3d m_trans_2d;
 	unsigned int m_gl_texture;
+	char* m_pixel_info;
+	Image* m_current_image;
 	
 
 

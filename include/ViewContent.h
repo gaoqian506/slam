@@ -36,6 +36,8 @@ public:
 	virtual bool changed() = 0;
 	virtual Image* get_debug_image(const int& idx) = 0;
 	virtual void push_manauly() = 0;
+	virtual void func_manualy(int idx) = 0;
+	virtual char* pixel_info(const Vec2d& u) = 0;
 	
 	void set_display_delegate(DisplayDelegate* dd) {
 		std::cout << "ViewContent::set_display_delegate" << std::endl;

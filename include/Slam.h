@@ -9,6 +9,7 @@
 #include <vector>
 
 #define MAX_STATIC_CAMERA_COUNT 100
+#define MAX_PIXEL_INFO 1024
 
 namespace ww {
 
@@ -25,6 +26,8 @@ public:
 	virtual bool changed();
 	virtual Image* get_debug_image(const int& idx);
 	virtual void push_manauly();
+	virtual void func_manualy(int idx);
+	virtual char* pixel_info(const Vec2d& u);
 
 
 private:
@@ -56,6 +59,7 @@ private:
 	Image* m_depth;
 	Image* m_iuux;
 	bool m_changed;
+	char m_pixel_info[MAX_PIXEL_INFO];
 
 };
 
