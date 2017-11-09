@@ -15,8 +15,11 @@ class GlToolbox {
 
 public:
 
+
+enum Origin { Center, TopLeft };
+
 static void othorgonal(const Rectangle& rect);
-static void orthogonal_pixel();
+static void orthogonal_pixel(Origin ori = Center);
 static void transform_to(const Vec3d& pose, const Vec9d& rotation);
 
 static void transform_to(const double* pose, const double* rotation);

@@ -58,8 +58,11 @@ private:
 	Image* m_gradient;
 	Image* m_depth;
 	Image* m_iuux;
+	Image* m_debug_image;
 	bool m_changed;
 	char m_pixel_info[MAX_PIXEL_INFO];
+	int m_width;
+	int m_height;
 
 };
 

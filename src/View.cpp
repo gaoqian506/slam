@@ -107,7 +107,9 @@ void View::display() {
 	//g_host = this;
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -117,6 +119,7 @@ void View::display() {
 		break;
 	case DisplayImage:
 		draw_image(m_content->get_debug_image(m_display_index));
+		print_text(m_pixel_info, 5, 15);
 		break;
 	}
 	
@@ -203,8 +206,14 @@ void View::draw_image(Image* image) {
 	if(!image) { return; }
 
 	//glScaled(10, 10, 10);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+
 	
-	GlToolbox::orthogonal_pixel();
+	GlToolbox::orthogonal_pixel(GlToolbox::Center);
 	glScaled(m_trans_2d[0], m_trans_2d[0], 1);
 	int w = image->width();
 	int h = image->height();
@@ -223,7 +232,53 @@ void View::draw_image(Image* image) {
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
+	glColor3d(0.233, 0.753, 0.777);
+	glBegin(GL_LINE_LOOP);
+	glVertex2d(-w/2, -h/2);
+	glVertex2d(-w/2, +h/2);
+	glVertex2d(+w/2, +h/2);
+	glVertex2d(+w/2, -h/2);
+	glEnd();
+
 	m_current_image = image;
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+}
+
+void View::print_text(const char* str, int x, int y) {
+
+	if (!str) { return; }
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+
+	GlToolbox::orthogonal_pixel(GlToolbox::TopLeft);
+	glRasterPos2f(x, y);
+
+	while(str[0]) {
+		if (str[0] == '\n') {
+			y += 20;
+			glRasterPos2f(x, y);
+		}
+		else {
+			glutBitmapCharacter(GLUT_BITMAP_8_BY_13, str[0]);
+		}
+
+
+		str++;
+	}
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
 
 }
 

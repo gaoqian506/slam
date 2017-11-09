@@ -12,13 +12,13 @@
 
 
 #define SAMPLE_2D( v0, v1, v2, v3, a, b) \
-	( v0*(1-a)*(1-b)+v1*(1-a)*b+v2*a*(1-b)+v3*a*b)
+	( v0*(1-a)*(1-b)+v1*a*(1-b)+v2*(1-a)*b+v3*a*b)
 
 
 namespace ww {
 
 
-Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL),  m_changed(false) {
+Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), m_frame(NULL),  m_changed(false), m_width(0), m_height(0) {
 
 	std::cout << "Slam::Slam" << std::endl;
 	
@@ -30,6 +30,7 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_gradient = NULL;
 	m_depth = NULL;
 	m_iuux = NULL;
+	m_debug_image = NULL;
 
 	m_pixel_info[0] = 0;
 	
@@ -94,15 +95,38 @@ bool Slam::changed() {
 
 Image* Slam::get_debug_image(const int& idx) {
 
+	Image* which = NULL;
+
 	if (idx == 0) {
-		return m_key ? m_key->gray : NULL;
+		which = m_key ? m_key->gray : NULL;
 	}
 	else if (idx == 1) {
-		return m_frame ? m_frame->gray : NULL;
+		which = m_frame ? m_frame->gray : NULL;
+	}
+	else if (idx == 2) {
+		which = m_residual;
+	}
+	else if (idx == 3) {
+		which = m_mask;
+	}
+	else {
+		which = NULL;
+	}
+
+	if (which) {
+		double min, max, scale;
+		which->min_max(&min, &max);
+		scale = 1./(max-min);
+		which->convert_to(m_debug_image, Image::Float32, scale, -min/(max-min));
+		return m_debug_image;
 	}
 	else {
 		return NULL;
 	}
+
+	
+		
+
 	//m_residual;
 	//assert(0);
 	//return NULL;
@@ -140,8 +164,26 @@ void Slam::func_manualy(int idx) {
 
 
 char* Slam::pixel_info(const Vec2d& u) {
-	sprintf(m_pixel_info, "%f, %f\n", u[0], u[1]);
-	printf("%s", m_pixel_info);
+	
+	
+	if (u[0] < 0 || u[0] >= m_width || u[1] < 0 || u[1] >= m_height) {
+		return NULL;
+	}
+	int idx = ((int)u[1]) * m_width + ((int)u[0]);
+	sprintf(m_pixel_info, 
+		"pos:%.3f, %.3f\n"
+		"key:%.3f cur:%.3f res:%.3f mask:%d\n"
+		"t: %f, %f, %f", 
+		u[0], u[1],
+		m_key ? *((float*)m_key->gray->at(idx)) : 0.0,
+		m_frame ? *((float*)m_frame->gray->at(idx)) : 0.0,
+		*((float*)m_residual->at(idx)),
+		*((unsigned char*)m_mask->at(idx)),
+		m_frame ? m_frame->pos[0] : 0,
+		m_frame ? m_frame->pos[1] : 0,
+		m_frame ? m_frame->pos[2] : 0
+	);
+	//printf("%s", m_pixel_info);
 	return m_pixel_info;
 }
 
@@ -149,8 +191,11 @@ void Slam::initialize(Image* image) {
 
 	if (m_mask) { return; }
 
-	int w = image->width();
-	int h = image->height();
+	m_width = image->width();
+	m_height = image->height();
+
+	int w = m_width;
+	int h = m_height;
 	
 	m_mask = new CvImage(w, h, Image::UByte);
 	//m_points = new CvImage(w, h, Image::Float32, 4);
@@ -489,6 +534,13 @@ void Slam::wipe_depth(const Vec3d& t) {
 /***************************
 
 
+
+
+
+	cv::minMaxIdx(image, &min, &max);
+	scale = 1./(max-min);
+	_image.convertTo(image, 
+		CV_32FC(image.channels()), scale, -min/(max-min));		
 
 	
 	//MatrixToolbox::rectify_rotation(m_frame->rotation);

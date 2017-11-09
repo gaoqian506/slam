@@ -86,7 +86,7 @@ void CvImage::copy_to(Image*& out) {
 	m_cv_mat.copyTo(cv_out->cv_mat());
 
 }
-void CvImage::convert_to(Image*& out, DataType type) {
+void CvImage::convert_to(Image*& out, DataType type, double alpha/* = 1.0*/, double beta/* = 0.0*/) {
 
 	if (out == NULL) {
 		out = new CvImage();
@@ -100,7 +100,7 @@ void CvImage::convert_to(Image*& out, DataType type) {
 		t = CV_32F;
 		break;
 	}
-	m_cv_mat.convertTo(cv_out->cv_mat(), t);
+	m_cv_mat.convertTo(cv_out->cv_mat(), t, alpha, beta);
 }
 
 void CvImage::set(double v) {
@@ -165,6 +165,16 @@ bool CvImage::empty() {
 
 	return m_cv_mat.empty();
 
+}
+
+ void CvImage::min_max(double* min, double* max) {
+
+	cv::minMaxIdx(m_cv_mat, min, max);
+}
+
+void* CvImage::at(int idx) {
+	return m_cv_mat.data + idx * m_cv_mat.step.buf[1];
+	//assert(0);
 }
 
 //float CvImage::sample(const float& a, const float& b) {

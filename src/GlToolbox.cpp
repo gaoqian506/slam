@@ -39,11 +39,22 @@ void GlToolbox::othorgonal(const Rectangle& rect) {
 
 }
 
-void GlToolbox::orthogonal_pixel() {
+void GlToolbox::orthogonal_pixel(Origin ori/* = Center*/) {
 	int vp[4];
 	glGetIntegerv(GL_VIEWPORT, vp);
 
-	glOrtho(-vp[2]>>1, vp[2]>>1, vp[3]>>1, -vp[3]>>1, -1, 1);
+	switch (ori) {
+
+	case Center:
+		glOrtho(-vp[2]>>1, vp[2]>>1, vp[3]>>1, -vp[3]>>1, -1, 1);
+		break;
+	case TopLeft:
+		glOrtho(0, vp[2], vp[3], 0, -1, 1);
+		break;
+
+	}
+
+
 	//glOrtho(-300, 300, -300, 300, -1, 1);
 }
 

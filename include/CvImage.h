@@ -29,7 +29,7 @@ public:
 	virtual void sobel_y(Image*& out);
 	virtual void subtract(Image* b, Image*& out);
 	virtual void copy_to(Image*& out);
-	virtual void convert_to(Image*& out, DataType type);
+	virtual void convert_to(Image*& out, DataType type, double alpha = 1.0, double beta = 0.0);
 	
 	virtual void set(double v);
 	virtual void save(const char* path);
@@ -40,6 +40,8 @@ public:
 	virtual DataType type();
 	virtual int channels();
 	virtual bool empty();
+	virtual void min_max(double* min, double* max);
+	virtual void* at(int idx);
 
 private:
 
