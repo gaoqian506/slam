@@ -142,7 +142,8 @@ void View::keyboard(unsigned char key,int x,int y) {
 			glutPostRedisplay();
 			break;
 		case 'b':	// manualy function 1
-			m_content->func_manualy(1);
+		case 'c':	// manualy function 2
+			m_content->func_manualy(key-'a');
 			glutPostRedisplay();
 			break;
 		}
@@ -420,7 +421,7 @@ Rectangle View::get_scene_bounding_box(Camera** cameras, int count) {
 
 /****************************************
 
-
+			m_content->func_manualy(1);
 
 	//glutMouseWheelFunc(g_mouse_wheel);
 	//glClearColor(0.233, 0.156, 0.43, 1);

@@ -159,6 +159,11 @@ void Slam::func_manualy(int idx) {
 	case 1:
 		prepare_residual();
 		break;
+	case 2:
+		if (m_frame) {
+			m_frame->pos += calc_delta_t();
+		}
+		break;
 	}
 }
 
