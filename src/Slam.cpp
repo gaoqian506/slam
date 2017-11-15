@@ -183,7 +183,10 @@ char* Slam::pixel_info(const Vec2d& u) {
 		"pos:%.3f, %.3f\n"
 		"key:%.3f cur:%.3f res:%.3f mask:%d\n"
 		"grad: %f, %f\n"
-		"t: %f, %f, %f", 
+		"t: %f, %f, %f\n"
+		"R: %f, %f, %f\n"
+		"   %f, %f, %f\n"
+		"   %f, %f, %f\n",
 		u[0], u[1],
 		m_key ? *((float*)m_key->gray->at(idx)) : 0.0,
 		m_frame ? *((float*)m_frame->gray->at(idx)) : 0.0,
@@ -193,8 +196,16 @@ char* Slam::pixel_info(const Vec2d& u) {
 		((Vec2f*)m_gradient->at(idx))[0][1],
 		m_frame ? m_frame->pos[0] : 0,
 		m_frame ? m_frame->pos[1] : 0,
-		m_frame ? m_frame->pos[2] : 0
-
+		m_frame ? m_frame->pos[2] : 0,
+		m_frame ? m_frame->rotation[0] : 0,
+		m_frame ? m_frame->rotation[1] : 0,
+		m_frame ? m_frame->rotation[2] : 0,
+		m_frame ? m_frame->rotation[3] : 0,
+		m_frame ? m_frame->rotation[4] : 0,
+		m_frame ? m_frame->rotation[5] : 0,
+		m_frame ? m_frame->rotation[6] : 0,
+		m_frame ? m_frame->rotation[7] : 0,
+		m_frame ? m_frame->rotation[8] : 0
 	);
 	//printf("%s", m_pixel_info);
 	return m_pixel_info;
