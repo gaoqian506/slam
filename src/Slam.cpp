@@ -163,6 +163,10 @@ void Slam::func_manualy(int idx) {
 		}
 		break;
 	case 2:
+		prepare_residual();
+		if (m_frame) {
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
+		}
 		break;
 	}
 }
@@ -413,7 +417,7 @@ Vec3d Slam::calc_delta_t() {
 		temp = m_frame->intrinsic.f*pDepth[i];
 		a[0] = pGrad[i][0]*temp;
 		a[1] = pGrad[i][1]*temp;
-		a[2] = -pDepth[i]*(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
+		a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
 		
 		A[0] += w*a[0]*a[0];
 		A[1] += w*a[0]*a[1];
@@ -467,39 +471,44 @@ Vec3d Slam::calc_delta_r() {
 	Vec3d iuux;
 	Vec9d A;
 	Vec3d B;
-	
+
 	for (int i = 0; i < total; i++) {
 		if (!pMask[i]) { continue; }
 		w = 1;//(std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
 		
 		temp = m_frame->intrinsic.f*pDepth[i];
-		iuux[0] = temp*pGrad[i][0]*w;
-		iuux[1] = temp*pGrad[i][1]*w;
+		iuux[0] = temp*pGrad[i][0];
+		iuux[1] = temp*pGrad[i][1];
 		iuux[2] = -(iuux[0]*pPts[i][0]+iuux[1]*pPts[i][1]);
+
 		
-		a[0] = pPts0[i][1]*iuux[2]-pPts0[i][2]*iuux[1];
-		a[1] = pPts0[i][2]*iuux[0]-pPts0[i][0]*iuux[2];
-		a[2] = pPts0[i][0]*iuux[1]-pPts0[i][1]*iuux[0];
+		a[0] = pPts[i][1]*iuux[2]-pPts[i][2]*iuux[1];
+		a[1] = pPts[i][2]*iuux[0]-pPts[i][0]*iuux[2];
+		a[2] = pPts[i][0]*iuux[1]-pPts[i][1]*iuux[0];
 		
 		
-		A[0] += a[0]*a[0];
-		A[1] += a[0]*a[1];
-		A[2] += a[0]*a[2];
-		A[4] += a[1]*a[1];
-		A[5] += a[1]*a[2];
-		A[8] += a[2]*a[2];
+		A[0] += w*a[0]*a[0];
+		A[1] += w*a[0]*a[1];
+		A[2] += w*a[0]*a[2];
+		A[4] += w*a[1]*a[1];
+		A[5] += w*a[1]*a[2];
+		A[8] += w*a[2]*a[2];
 		
-		B[0] += a[0]*pDg[i];
-		B[1] += a[1]*pDg[i];
-		B[2] += a[2]*pDg[i];
+		B[0] += w*a[0]*pDg[i];
+		B[1] += w*a[1]*pDg[i];
+		B[2] += w*a[2]*pDg[i];
 	}
 	
 	A[3] = A[1];
 	A[6] = A[2];
 	A[7] = A[5];
 	
-	A /= total;
-	B /= total;
+	//A /= total;
+	//B /= total;
+
+	A[0] += 1;
+	A[4] += 1;
+	A[8] += 1;
 	
 	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
 	return Vec3d(
