@@ -158,11 +158,11 @@ void Slam::func_manualy(int idx) {
 
 	case 1:
 		prepare_residual();
-		break;
-	case 2:
 		if (m_frame) {
 			m_frame->pos += calc_delta_t();
 		}
+		break;
+	case 2:
 		break;
 	}
 }
@@ -178,15 +178,19 @@ char* Slam::pixel_info(const Vec2d& u) {
 	sprintf(m_pixel_info, 
 		"pos:%.3f, %.3f\n"
 		"key:%.3f cur:%.3f res:%.3f mask:%d\n"
+		"grad: %f, %f\n"
 		"t: %f, %f, %f", 
 		u[0], u[1],
 		m_key ? *((float*)m_key->gray->at(idx)) : 0.0,
 		m_frame ? *((float*)m_frame->gray->at(idx)) : 0.0,
 		*((float*)m_residual->at(idx)),
 		*((unsigned char*)m_mask->at(idx)),
+		((Vec2f*)m_gradient->at(idx))[0][0],
+		((Vec2f*)m_gradient->at(idx))[0][1],
 		m_frame ? m_frame->pos[0] : 0,
 		m_frame ? m_frame->pos[1] : 0,
 		m_frame ? m_frame->pos[2] : 0
+
 	);
 	//printf("%s", m_pixel_info);
 	return m_pixel_info;
@@ -407,28 +411,32 @@ Vec3d Slam::calc_delta_t() {
 		if (!pMask[i]) { continue; }
 		w = 1;//(std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
 		temp = m_frame->intrinsic.f*pDepth[i];
-		a[0] = w*pGrad[i][0]*temp;
-		a[1] = w*pGrad[i][1]*temp;
-		a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
+		a[0] = pGrad[i][0]*temp;
+		a[1] = pGrad[i][1]*temp;
+		a[2] = -pDepth[i]*(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
 		
-		A[0] += a[0]*a[0];
-		A[1] += a[0]*a[1];
-		A[2] += a[0]*a[2];
-		A[4] += a[1]*a[1];
-		A[5] += a[1]*a[2];
-		A[8] += a[2]*a[2];
+		A[0] += w*a[0]*a[0];
+		A[1] += w*a[0]*a[1];
+		A[2] += w*a[0]*a[2];
+		A[4] += w*a[1]*a[1];
+		A[5] += w*a[1]*a[2];
+		A[8] += w*a[2]*a[2];
 		
-		B[0] += a[0]*pDg[i];
-		B[1] += a[1]*pDg[i];
-		B[2] += a[2]*pDg[i];
+		B[0] += w*a[0]*pDg[i];
+		B[1] += w*a[1]*pDg[i];
+		B[2] += w*a[2]*pDg[i];
 	}
 	
 	A[3] = A[1];
 	A[6] = A[2];
 	A[7] = A[5];
 	
-	A /= total;
-	B /= total;
+	//A /= total;
+	//B /= total;
+
+	A[0] += 1;
+	A[4] += 1;
+	A[8] += 1;
 	
 	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
 	return Vec3d(

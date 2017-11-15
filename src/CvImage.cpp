@@ -55,7 +55,7 @@ void CvImage::sobel_x(Image*& out) {
 		out = new CvImage();
 	}
 	CvImage* cv_out = static_cast<CvImage*>(out);
-	cv::Sobel(m_cv_mat, cv_out->cv_mat(), m_cv_mat.depth(), 1, 0);
+	cv::Sobel(m_cv_mat, cv_out->cv_mat(), m_cv_mat.depth(), 1, 0, 3, 0.25);
 }
 void CvImage::sobel_y(Image*& out) {
 
@@ -63,7 +63,7 @@ void CvImage::sobel_y(Image*& out) {
 		out = new CvImage();
 	}
 	CvImage* cv_out = static_cast<CvImage*>(out);
-	cv::Sobel(m_cv_mat, cv_out->cv_mat(), m_cv_mat.depth(), 0, 1);
+	cv::Sobel(m_cv_mat, cv_out->cv_mat(), m_cv_mat.depth(), 0, 1, 3, 0.25);
 
 }
 void CvImage::subtract(Image* b, Image*& out) {

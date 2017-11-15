@@ -119,8 +119,8 @@ struct Vec3d {
 	Vec3d& operator+=(const Vec3d& right) {
 	
 		val[0] += right[0];
-		val[1] += right[0];
-		val[2] += right[0];
+		val[1] += right[1];
+		val[2] += right[2];
 		return *this;
 	}
 	Vec3d& operator/=(const double& d) {
