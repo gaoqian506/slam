@@ -52,7 +52,7 @@ struct Vec4f {
 		return val[idx];
 	}
 	
-	Vec4f& operator/=(const float& d) {
+	Vec4f& operator/=(float d) {
 	
 		val[0] /= d;
 		val[1] /= d;
@@ -87,7 +87,7 @@ struct Vec2d {
 		val[1] += right[0];
 		return *this;
 	}
-	Vec2d& operator/=(const double& d) {
+	Vec2d& operator/=(double d) {
 	
 		val[0] /= d;
 		val[1] /= d;
@@ -123,7 +123,7 @@ struct Vec3d {
 		val[2] += right[2];
 		return *this;
 	}
-	Vec3d& operator/=(const double& d) {
+	Vec3d& operator/=(double d) {
 	
 		val[0] /= d;
 		val[1] /= d;
@@ -149,7 +149,7 @@ struct Vec9d {
 		return val[idx];
 	}
 	
-	Vec9d& operator/=(const double& d) {
+	Vec9d& operator/=(double d) {
 	
 		val[0] /= d;
 		val[1] /= d;

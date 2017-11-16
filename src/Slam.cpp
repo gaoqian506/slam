@@ -505,9 +505,9 @@ Vec3d Slam::calc_delta_r() {
 		A[5] += w*a[1]*a[2];
 		A[8] += w*a[2]*a[2];
 		
-		B[0] += w*a[0]*pDg[i];
-		B[1] += w*a[1]*pDg[i];
-		B[2] += w*a[2]*pDg[i];
+		B[0] += w*a[0]*pDg[i]*pDepth[i];
+		B[1] += w*a[1]*pDg[i]*pDepth[i];
+		B[2] += w*a[2]*pDg[i]*pDepth[i];
 	}
 	
 	A[3] = A[1];

@@ -119,7 +119,7 @@ void View::display() {
 		break;
 	case DisplayImage:
 		draw_image(m_content->get_debug_image(m_display_index));
-		print_text(m_pixel_info, 5, 15);
+		print_text(m_content->pixel_info(m_pixel_pos), 5, 15);
 		break;
 	}
 	
@@ -184,8 +184,7 @@ void View::mouse(int button, int state, int x, int y) {
 void View::passive_mouse_move(int x, int y) {
 
 	if (m_current_image) {
-		Vec2d u = GlToolbox::screen_to_image(x, y, m_trans_2d[0], m_current_image->width(), m_current_image->height());
-		m_pixel_info = m_content->pixel_info(u);
+		m_pixel_pos = GlToolbox::screen_to_image(x, y, m_trans_2d[0], m_current_image->width(), m_current_image->height());
 		glutPostRedisplay();
 	}
 }

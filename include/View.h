@@ -59,7 +59,8 @@ private:
 	int m_display_index;
 	Vec3d m_trans_2d;
 	unsigned int m_gl_texture;
-	char* m_pixel_info;
+	Vec2d m_pixel_pos;
+	//char* m_pixel_info;
 	Image* m_current_image;
 	
 

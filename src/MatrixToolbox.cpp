@@ -38,16 +38,20 @@ void MatrixToolbox::update_rotation(Vec9d& R, const Vec3d& eula) {
 	//[ cos(b)*cos(c), cos(c)*sin(a)*sin(b) - cos(a)*sin(c), sin(a)*sin(c) + cos(a)*cos(c)*sin(b)]
 //[ cos(b)*sin(c), cos(a)*cos(c) + sin(a)*sin(b)*sin(c), cos(a)*sin(b)*sin(c) - cos(c)*sin(a)]
 //[       -sin(b),                        cos(b)*sin(a),                        cos(a)*cos(b)]
+
+	double a = eula[0];
+	double b = eula[1];
+	double c = eula[2];
 	double dR[9] = {
-		cos(eula[1])*cos(eula[0])-cos(eula[2])*sin(eula[1])*sin(eula[0]), 
-		-cos(eula[2])*cos(eula[0])*sin(eula[1])-cos(eula[1])*sin(eula[0]),
-		sin(eula[1])*sin(eula[2]),
-		cos(eula[0])*sin(eula[1])+cos(eula[1])*cos(eula[2])*sin(eula[0]),
-		cos(eula[1])*cos(eula[2])*cos(eula[0])-sin(eula[1])*sin(eula[0]), 
-		-cos(eula[1])*sin(eula[2]),
-		sin(eula[2])*sin(eula[0]),
-		cos(eula[0])*sin(eula[2]),
-		cos(eula[2])
+		cos(b)*cos(c), 
+		cos(c)*sin(a)*sin(b) - cos(a)*sin(c), 
+		sin(a)*sin(c) + cos(a)*cos(c)*sin(b),
+		cos(b)*sin(c),
+		cos(a)*cos(c) + sin(a)*sin(b)*sin(c), 
+		cos(a)*sin(b)*sin(c) - cos(c)*sin(a),
+		-sin(b),
+		cos(b)*sin(a),
+		cos(a)*cos(b)
 	};
 
 
@@ -65,10 +69,20 @@ void MatrixToolbox::rectify_rotation(Vec9d& R) {
 } // namespace
 
 
-/*
+/*******************************
 
+
+cos(eula[1])*cos(eula[0])-cos(eula[2])*sin(eula[1])*sin(eula[0]), 
+		-cos(eula[2])*cos(eula[0])*sin(eula[1])-cos(eula[1])*sin(eula[0]),
+		sin(eula[1])*sin(eula[2]),
+		cos(eula[0])*sin(eula[1])+cos(eula[1])*cos(eula[2])*sin(eula[0]),
+		cos(eula[1])*cos(eula[2])*cos(eula[0])-sin(eula[1])*sin(eula[0]), 
+		-cos(eula[1])*sin(eula[2]),
+		sin(eula[2])*sin(eula[0]),
+		cos(eula[0])*sin(eula[2]),
+		cos(eula[2])
 	
 	//A.inverse(invA);
 	
 	
-*/
+*********************************/
