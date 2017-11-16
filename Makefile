@@ -34,6 +34,8 @@ shanghai:
 move_left_8x8:
 	./$(TARGET) data/images/move_left_8x8/001.png data/images/move_left_8x8/002.png
 	
+tsukuba:
+	./$(TARGET) data/images/tsukuba/tsukuba_l.png data/images/tsukuba/tsukuba_r.png
 	
 debug:
 	gdb ./$(TARGET)
