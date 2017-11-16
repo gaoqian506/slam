@@ -168,6 +168,13 @@ void Slam::func_manualy(int idx) {
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
 		}
 		break;
+	case 3:
+		prepare_residual();
+		if (m_frame) {
+			m_frame->pos += calc_delta_t();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
+		}
+		break;
 	}
 }
 
@@ -180,8 +187,8 @@ char* Slam::pixel_info(const Vec2d& u) {
 	}
 	int idx = ((int)u[1]) * m_width + ((int)u[0]);
 	sprintf(m_pixel_info, 
-		"pos:%.3f, %.3f\n"
-		"key:%.3f cur:%.3f res:%.3f mask:%d\n"
+		"pos:%f, %f\n"
+		"key:%f cur:%f res:%f mask:%d\n"
 		"grad: %f, %f\n"
 		"t: %f, %f, %f\n"
 		"R: %f, %f, %f\n"
