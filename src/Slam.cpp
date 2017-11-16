@@ -109,6 +109,9 @@ Image* Slam::get_debug_image(const int& idx) {
 	else if (idx == 3) {
 		which = m_mask;
 	}
+	else if (idx == 4) {
+		which = m_key ? m_key->depth : NULL;
+	}
 	else {
 		which = NULL;
 	}
@@ -175,6 +178,11 @@ void Slam::func_manualy(int idx) {
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
 		}
 		break;
+	case 4:
+		if (m_frame) {
+			update_keyframe(NULL);
+		}
+		break;
 	}
 }
 
@@ -190,6 +198,7 @@ char* Slam::pixel_info(const Vec2d& u) {
 		"pos:%f, %f\n"
 		"key:%f cur:%f res:%f mask:%d\n"
 		"grad: %f, %f\n"
+		"depth: %f\n"
 		"t: %f, %f, %f\n"
 		"R: %f, %f, %f\n"
 		"   %f, %f, %f\n"
@@ -201,6 +210,7 @@ char* Slam::pixel_info(const Vec2d& u) {
 		*((unsigned char*)m_mask->at(idx)),
 		((Vec2f*)m_gradient->at(idx))[0][0],
 		((Vec2f*)m_gradient->at(idx))[0][1],
+		m_key ? *((float*)m_key->depth->at(idx)) : 0.0,
 		m_frame ? m_frame->pos[0] : 0,
 		m_frame ? m_frame->pos[1] : 0,
 		m_frame ? m_frame->pos[2] : 0,
@@ -318,6 +328,28 @@ void Slam::update_keyframe(Image* image){
 		m_cameras[m_camera_count] = m_key;
 	
 		m_camera_count++;
+	}
+	else {
+
+		Vec2f* pGrad = (Vec2f*)m_gradient->data();
+		float* pDg = (float*)m_residual->data();
+		float* pDepth = (float*)m_depth->data();
+		Vec4f* pPts = (Vec4f*)m_frame->points->data();
+		unsigned char* pMask = (unsigned char*)m_mask->data();
+		float* p_kd = (float*)m_key->depth->data();
+		const Vec3d& t = m_frame->pos;
+		int total = m_width * m_height;
+		double a[3];
+		double a2, temp;
+		for (int i = 0; i < total; i++) {
+			if (!pMask[i]) { continue; }
+			temp = m_frame->intrinsic.f*pDepth[i]/p_kd[i];
+			a[0] = pGrad[i][0]*temp;
+			a[1] = pGrad[i][1]*temp;
+			a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
+			a2 = a[0]*t[0]+a[1]*t[1]+a[2]*t[2];
+			p_kd[i] += pDg[i] / (100 + a2);
+		}
 	}
 	
 

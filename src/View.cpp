@@ -144,6 +144,7 @@ void View::keyboard(unsigned char key,int x,int y) {
 		case 'b':	// manualy function 1
 		case 'c':	// manualy function 2
 		case 'd':	// manualy function 3
+		case 'e':	// manualy function 3
 			m_content->func_manualy(key-'a');
 			glutPostRedisplay();
 			break;

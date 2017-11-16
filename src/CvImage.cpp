@@ -19,8 +19,8 @@ namespace ww {
 		case UByte:
 			m_cv_mat = cv::Mat(height, width, CV_8UC(channels));
 			break;
-		
 		}
+		m_cv_mat.setTo(0);
 	}
 
 void* CvImage::data() {
