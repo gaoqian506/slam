@@ -160,26 +160,27 @@ void Slam::func_manualy(int idx) {
 	switch (idx) {
 
 	case 1:
-		prepare_residual();
 		if (m_frame) {
+			prepare_residual();
 			m_frame->pos += calc_delta_t();
 		}
 		break;
 	case 2:
-		prepare_residual();
 		if (m_frame) {
+			prepare_residual();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
 		}
 		break;
 	case 3:
-		prepare_residual();
 		if (m_frame) {
+			prepare_residual();
 			m_frame->pos += calc_delta_t();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
 		}
 		break;
 	case 4:
 		if (m_frame) {
+			prepare_residual();
 			update_keyframe(NULL);
 		}
 		break;

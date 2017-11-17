@@ -137,23 +137,25 @@ void View::display() {
 
 void View::keyboard(unsigned char key,int x,int y) {
 
+	double dist = 0.1;
+
 	if (m_display_aspect == DisplaySpace) {
 
 		switch(key) {
 		case 'w':	// move forward
-			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -0.02));
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
 			glutPostRedisplay();
 			break;
 		case 's':	// move backward
-			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, 0.02));
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
 			glutPostRedisplay();
 			break;
 		case 'a':	// move forward
-			SpaceToolbox::translate(m_view_matrix, Vec3d(0.02, 0, 0));
+			SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
 			glutPostRedisplay();
 			break;
 		case 'd':	// move backward
-			SpaceToolbox::translate(m_view_matrix, Vec3d(-0.02, 0, 0));
+			SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
 			glutPostRedisplay();
 			break;
 		}
@@ -456,10 +458,10 @@ void View::draw_camera_instance(Camera* camera) {
 	}
 	glEnd();
 	
-	if (camera->points && false) {
+	if (camera->points) {
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(4, GL_FLOAT, 0, camera->points->data());
-		 glDrawArrays(GL_POINTS, 0, width*height);
+		glDrawArrays(GL_POINTS, 0, width*height);
 		glDisableClientState(GL_VERTEX_ARRAY);
 	}
 }
