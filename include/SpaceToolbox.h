@@ -24,6 +24,8 @@ static Vec9d make_rotation(const double& thex, const double& they);
 
 static void rotate(Vec16d& T, const Vec9d& R);
 
+static void translate(Vec16d& T, const Vec3d& t);
+
 };
 
 

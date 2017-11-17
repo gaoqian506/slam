@@ -33,7 +33,11 @@ void g_special(int key, int x, int y) {
 
 void g_mouse_func(int button, int state, int x, int y) {
 	((View*)g_host)->mouse(button, state, x, y);
+}
 
+void g_mouse_move_func(int x, int y) {
+
+	((View*)g_host)->mouse_move(x, y);
 }
 
 void g_passive_mouse_move_func(int x, int y) {
@@ -69,6 +73,7 @@ View::View(ViewContent* vc) {
 	glutKeyboardFunc(g_keyboard);
 	glutSpecialFunc(g_special);
 	glutMouseFunc(g_mouse_func);
+	glutMotionFunc(g_mouse_move_func);
 	glutPassiveMotionFunc(g_passive_mouse_move_func);
 
 	
@@ -132,6 +137,28 @@ void View::display() {
 
 void View::keyboard(unsigned char key,int x,int y) {
 
+	if (m_display_aspect == DisplaySpace) {
+
+		switch(key) {
+		case 'w':	// move forward
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -0.02));
+			glutPostRedisplay();
+			break;
+		case 's':	// move backward
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, 0.02));
+			glutPostRedisplay();
+			break;
+		case 'a':	// move forward
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0.02, 0, 0));
+			glutPostRedisplay();
+			break;
+		case 'd':	// move backward
+			SpaceToolbox::translate(m_view_matrix, Vec3d(-0.02, 0, 0));
+			glutPostRedisplay();
+			break;
+		}
+	}
+	else {
 		switch(key) {
 		//Enter
 		case 48:	// '0'
@@ -154,6 +181,9 @@ void View::keyboard(unsigned char key,int x,int y) {
 			glutPostRedisplay();
 			break;
 		}
+	}
+
+
 
 }
 
@@ -174,8 +204,12 @@ void View::special(int key,int x,int y) {
 
 void View::mouse(int button, int state, int x, int y) {
 
+
 	switch(button) {
 
+	case 1:
+
+		break;
 	case 3:
 		m_trans_2d[0] *= 1.25;
 		glutPostRedisplay();
@@ -186,24 +220,36 @@ void View::mouse(int button, int state, int x, int y) {
 		break;
 	}
 
+
+
 }
 
-void View::passive_mouse_move(int x, int y) {
+void View::mouse_move(int x, int y) {
 
 	int dx = x-m_mouse_pos[0];
 	int dy = y-m_mouse_pos[1];
-	//std::cout << "passive_mouse_move:" << dx << "," << dy << std::endl;
+
 	if (m_display_aspect == DisplaySpace && abs(dx) < 20 && abs(dy) < 20) {
 		Vec9d dR = SpaceToolbox::make_rotation(-dy*m_vpp, dx*m_vpp);
 		SpaceToolbox::rotate(m_view_matrix, dR);
 		glutPostRedisplay();
 	}
-	else if (m_current_image) {
+
+	m_mouse_pos[0] = x;
+	m_mouse_pos[1] = y;
+
+}
+
+void View::passive_mouse_move(int x, int y) {
+
+
+	//std::cout << "passive_mouse_move:" << dx << "," << dy << std::endl;
+
+	if (m_current_image) {
 		m_pixel_pos = GlToolbox::screen_to_image(x, y, m_trans_2d[0], m_current_image->width(), m_current_image->height());
 		glutPostRedisplay();
 	}
-	m_mouse_pos[0] = x;
-	m_mouse_pos[1] = y;
+
 }
 
 void View::draw_content() {

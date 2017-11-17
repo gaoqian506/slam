@@ -34,6 +34,7 @@ public:
 	void keyboard(unsigned char key,int x,int y);
 	void special(int key,int x,int y);
 	void mouse(int button, int state, int x, int y);
+	void mouse_move(int x, int y);
 	void passive_mouse_move(int x, int y);
 	void start_content();
 	void draw_content();

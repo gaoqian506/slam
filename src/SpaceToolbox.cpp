@@ -80,5 +80,13 @@ void SpaceToolbox::rotate(Vec16d& T, const Vec9d& R) {
 	
 }
 
+void SpaceToolbox::translate(Vec16d& T, const Vec3d& t) {
+
+	T[3] += t[0];
+	T[7] += t[1];
+	T[11] += t[2];
+	
+}
+
 } // namespace
 
