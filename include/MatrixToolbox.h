@@ -19,6 +19,8 @@ static Vec9d inv_matrix_3x3(Vec9d& from);
 static void update_rotation(Vec9d& R, const Vec3d& eula);
 static void rectify_rotation(Vec9d& R);
 
+static void identity(Vec16d& M);
+
 };
 
 }// namespace

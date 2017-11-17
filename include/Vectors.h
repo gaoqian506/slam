@@ -183,6 +183,28 @@ struct Vec9d {
 	
 };
 
+struct Vec16d {
+
+	Vec16d() {
+		memset(val, 0, sizeof(val));
+	}
+	
+	Vec16d(const Vec16d& c) {
+		memcpy(val, c.val, sizeof(val));
+	}
+
+	double& operator[](int idx) {
+		return val[idx];
+	}
+
+	const double& operator[] (int idx) const {
+		return val[idx];
+	}
+
+	double val[16];
+};
+
+
 
 }
 

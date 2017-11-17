@@ -66,6 +66,16 @@ void MatrixToolbox::rectify_rotation(Vec9d& R) {
 	assert(0);
 }
 
+void MatrixToolbox::identity(Vec16d& M) {
+
+	memset(M.val, 0, sizeof(M.val));
+	M[0] = 1;
+	M[5] = 1;
+	M[10] = 1;
+	M[15] = 1;
+
+}
+
 } // namespace
 
 

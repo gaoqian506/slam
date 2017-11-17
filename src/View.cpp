@@ -3,6 +3,7 @@
 #include "View.h"
 #include "GlToolbox.h"
 #include "SpaceToolbox.h"
+#include "MatrixToolbox.h"
 #include <GL/glut.h>
 #include <iostream>
 #include <vector>
@@ -78,6 +79,7 @@ View::View(ViewContent* vc) {
 
 	glGenTextures(1, &m_gl_texture);
 	m_current_image = 0;
+	MatrixToolbox::identity(m_view_matrix);
 
 
 }
@@ -132,11 +134,14 @@ void View::keyboard(unsigned char key,int x,int y) {
 
 		switch(key) {
 		//Enter
-		case 49:	// DisplaySpace
-		case 50:	// DisplayImage
-			m_display_aspect = (DisplayAspect)(key-49);
+		case 48:	// '0'
+			m_display_aspect = DisplaySpace;
+			glutPostRedisplay();
 			break;
-
+		case 49:	// '1'
+			m_display_aspect = DisplayImage;
+			glutPostRedisplay();
+			break;
 		case 'a':	// push manauly
 			m_content->push_manauly();
 			glutPostRedisplay();
@@ -185,21 +190,60 @@ void View::mouse(int button, int state, int x, int y) {
 
 void View::passive_mouse_move(int x, int y) {
 
-	if (m_current_image) {
+	int dx = x-m_mouse_pos[0];
+	int dy = y-m_mouse_pos[1];
+	//std::cout << "passive_mouse_move:" << dx << "," << dy << std::endl;
+	if (m_display_aspect == DisplaySpace && abs(dx) < 20 && abs(dy) < 20) {
+		Vec9d dR = SpaceToolbox::make_rotation(-dy*m_vpp, dx*m_vpp);
+		SpaceToolbox::rotate(m_view_matrix, dR);
+		glutPostRedisplay();
+	}
+	else if (m_current_image) {
 		m_pixel_pos = GlToolbox::screen_to_image(x, y, m_trans_2d[0], m_current_image->width(), m_current_image->height());
 		glutPostRedisplay();
 	}
+	m_mouse_pos[0] = x;
+	m_mouse_pos[1] = y;
 }
 
 void View::draw_content() {
 
-	glColor3d(1, 1, 1);
-	glBegin(GL_LINE_LOOP);
-	glVertex3d(-0.5, -0.5, 0);
-	glVertex3d(-0.5, +0.5, 0);
-	glVertex3d(+0.5, +0.5, 0);
-	glVertex3d(+0.5, -0.5, 0);
-	glEnd();
+
+	std::cout << "View::draw_content" << std::endl;
+		
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	int viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	gluPerspective(60.0, (double)viewport[2]/viewport[3], 0.1, 1000);
+	m_vpp = 60.0/viewport[3]/180*3.1415926535898;
+	//gluPerspective(60, 1, 0.1, 1000);
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+	glRotated(180, 1, 0, 0);
+	glMultTransposeMatrixd(m_view_matrix.val);
+
+	Camera** cameras = m_content->get_cameras();
+	int camera_count = m_content->get_camera_count();
+
+		
+	glColor3d(0.87,0.623,3.222);
+
+	for (int i = 0; i < camera_count; i++) {
+		draw_camera_instance(cameras[i]);
+	}
+
+	Camera* current = m_content->get_current_frame();
+	if (current) {
+		glColor3d(0.57,4.623,7.222);
+		//draw_camera_instance(current);
+	}
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();	
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
 
 }
 
@@ -286,7 +330,7 @@ void View::print_text(const char* str, int x, int y) {
 
 void View::draw_cameras() {
 	std::cout << "View::draw_cameras" << std::endl;
-	
+	assert(0);
 	Camera** cameras = m_content->get_cameras();
 	int camera_count = m_content->get_camera_count();
 	
@@ -366,7 +410,7 @@ void View::draw_camera_instance(Camera* camera) {
 	}
 	glEnd();
 	
-	if (camera->points) {
+	if (camera->points && false) {
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(4, GL_FLOAT, 0, camera->points->data());
 		 glDrawArrays(GL_POINTS, 0, width*height);
@@ -421,6 +465,40 @@ Rectangle View::get_scene_bounding_box(Camera** cameras, int count) {
 } // namespace
 
 /****************************************
+
+
+
+	glRotated(180, 1, 0, 0);
+	glTranslated(0.1, 0.1, 0);
+
+
+	glColor3d(1, 1, 1);
+	glBegin(GL_LINE_LOOP);
+	glVertex3d(-0.5, -0.5, 1.5);
+	glVertex3d(-0.5, +0.5, 1.5);
+	glVertex3d(+0.5, +0.5, 1.5);
+	glVertex3d(+0.5, -0.5, 1.5);
+	glEnd();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();	
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+	return;
+
+
+	glColor3d(1, 1, 1);
+	glBegin(GL_LINE_LOOP);
+	glVertex3d(-0.5, -0.5, 0);
+	glVertex3d(-0.5, +0.5, 0);
+	glVertex3d(+0.5, +0.5, 0);
+	glVertex3d(+0.5, -0.5, 0);
+	glEnd();
+
+
+		case 50:	// DisplayImage
+
+			break;
 
 			m_content->func_manualy(1);
 

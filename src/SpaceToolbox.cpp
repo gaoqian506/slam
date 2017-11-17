@@ -40,5 +40,45 @@ void SpaceToolbox::init_intrinsic(Intrinsic& intri, double fovy, int width, int 
 
 }
 
+Vec9d SpaceToolbox::make_rotation(const double& thex, const double& they) {
+
+	Vec9d R;
+	R[6] = cos(thex)*sin(they);
+	R[7] = -sin(thex);
+	R[8] = cos(thex)*cos(they);
+
+	double norm = sqrt(R[6]*R[6]+R[8]*R[8]);
+	R[0] = R[8] / norm;
+	R[1] = 0;
+	R[2] = -R[6] / norm;
+
+	R[3] = R[7]*R[2]-R[8]*R[1];
+	R[4] = R[8]*R[0]-R[6]*R[2];
+	R[5] = R[6]*R[1]-R[7]*R[0];
+
+	return R;
+
+}
+
+void SpaceToolbox::rotate(Vec16d& T, const Vec9d& R) {
+	Vec16d A(T);
+	
+	T[0] = R[0]*A[0]+R[1]*A[4]+R[2]*A[8];
+	T[1] = R[0]*A[1]+R[1]*A[5]+R[2]*A[9];
+	T[2] = R[0]*A[2]+R[1]*A[6]+R[2]*A[10];
+	T[3] = R[0]*A[3]+R[1]*A[7]+R[2]*A[11];
+
+	T[4] = R[3]*A[0]+R[4]*A[4]+R[5]*A[8];
+	T[5] = R[3]*A[1]+R[4]*A[5]+R[5]*A[9];
+	T[6] = R[3]*A[2]+R[4]*A[6]+R[5]*A[10];
+	T[7] = R[3]*A[4]+R[4]*A[7]+R[5]*A[11];
+
+	T[8] = R[6]*A[0]+R[7]*A[4]+R[8]*A[8];
+	T[9] = R[6]*A[1]+R[7]*A[5]+R[8]*A[9];
+	T[10] = R[6]*A[2]+R[7]*A[6]+R[8]*A[10];
+	T[11] = R[6]*A[3]+R[7]*A[7]+R[8]*A[11];
+	
+}
+
 } // namespace
 

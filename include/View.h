@@ -62,6 +62,9 @@ private:
 	Vec2d m_pixel_pos;
 	//char* m_pixel_info;
 	Image* m_current_image;
+	int m_mouse_pos[2];
+	double m_vpp; //view per pixel in radian
+	Vec16d m_view_matrix;
 	
 
 

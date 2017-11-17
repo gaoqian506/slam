@@ -20,6 +20,10 @@ static std::vector<Vec3d> unproject(const Intrinsic& intrinsic, const std::vecto
 
 static void init_intrinsic(Intrinsic& intri, double fovy, int width, int height);
 
+static Vec9d make_rotation(const double& thex, const double& they);
+
+static void rotate(Vec16d& T, const Vec9d& R);
+
 };
 
 
