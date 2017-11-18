@@ -137,6 +137,8 @@ void View::display() {
 
 void View::keyboard(unsigned char key,int x,int y) {
 
+	double dist = 0.1;
+
 	switch(key) {
 	case 48:	// '0'
 		m_display_aspect = DisplaySpace;
@@ -146,55 +148,49 @@ void View::keyboard(unsigned char key,int x,int y) {
 		m_display_aspect = DisplayImage;
 		glutPostRedisplay();
 		break;
+	case 'w':	// move forward
+		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
+		glutPostRedisplay();
+		break;
+	case 's':	// move backward
+		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
+		glutPostRedisplay();
+		break;
+	case 'a':	// move forward
+		SpaceToolbox::translate(m_view_matrix,
+ Vec3d(dist, 0, 0));
+		glutPostRedisplay();
+		break;
+	case 'd':	// move backward
+		SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
+		glutPostRedisplay();
+		break;
 	}
-
-	double dist = 0.1;
-
-	if (m_display_aspect == DisplaySpace) {
-
-		switch(key) {
-		case 'w':	// move forward
-			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
-			glutPostRedisplay();
-			break;
-		case 's':	// move backward
-			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
-			glutPostRedisplay();
-			break;
-		case 'a':	// move forward
-			SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
-			glutPostRedisplay();
-			break;
-		case 'd':	// move backward
-			SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
-			glutPostRedisplay();
-			break;
-		}
-	}
-	else {
-		switch(key) {
-		case 'a':	// push manauly
-			m_content->push_manauly();
-			glutPostRedisplay();
-			break;
-		case 'b':	// manualy function 1
-		case 'c':	// manualy function 2
-		case 'd':	// manualy function 3
-		case 'e':	// manualy function 3
-			m_content->func_manualy(key-'a');
-			glutPostRedisplay();
-			break;
-		}
-	}
-
-
-
 }
 
 void View::special(int key,int x,int y) {
 
 	switch(key) {
-
+	case GLUT_KEY_F1:
+		m_content->push_manauly();
+		glutPostRedisplay();
+		break;
+	case GLUT_KEY_F2:
+		m_content->func_manualy(1);
+		glutPostRedisplay();
+		break;
+	case GLUT_KEY_F3:
+		m_content->func_manualy(2);
+		glutPostRedisplay();
+		break;
+	case GLUT_KEY_F4:
+		m_content->func_manualy(3);
+		glutPostRedisplay();
+		break;
+	case GLUT_KEY_F5:
+		m_content->func_manualy(4);
+		glutPostRedisplay();
+		break;
 	case GLUT_KEY_UP:
 		m_display_index++;
 		glutPostRedisplay();
@@ -515,6 +511,90 @@ Rectangle View::get_scene_bounding_box(Camera** cameras, int count) {
 } // namespace
 
 /****************************************
+
+
+
+	double dist = 0.1;
+
+	switch(key) {
+	case 48:	// '0'
+		m_display_aspect = DisplaySpace;
+		glutPostRedisplay();
+		break;
+	case 49:	// '1'
+		m_display_aspect = DisplayImage;
+		glutPostRedisplay();
+		break;
+	case 'w':	// move forward
+		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
+		glutPostRedisplay();
+		break;
+	case 's':	// move backward
+		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
+		glutPostRedisplay();
+		break;
+	case 'a':	// move forward
+		if (glutGetModifiers() == GLUT_ACTIVE_CTRL) {
+			m_content->push_manauly();
+		}
+		else {
+			SpaceToolbox::translate(m_view_matrix,
+ Vec3d(dist, 0, 0));
+		}
+		glutPostRedisplay();
+		break;
+	case 'd':	// move backward
+		if (glutGetModifiers() == GLUT_ACTIVE_CTRL) {
+			m_content->func_manualy(key-'a');
+		}
+		else {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
+		}
+		glutPostRedisplay();
+		break;
+	case 'b':	// manualy function 1
+		if (glutGetModifiers() == GLUT_ACTIVE_CTRL) {
+			m_content->func_manualy(key-'a');
+		}
+		glutPostRedisplay();
+		break;
+	case 'c':	// manualy function 2
+		if (glutGetModifiers() == GLUT_ACTIVE_CTRL) {
+			m_content->func_manualy(key-'a');
+		}
+		glutPostRedisplay();
+		break;
+	case 'e':	// manualy function 3
+		if (glutGetModifiers() == GLUT_ACTIVE_CTRL) {
+			m_content->func_manualy(key-'a');
+		}
+		glutPostRedisplay();
+		break;
+	}
+
+
+	if (m_display_aspect == DisplaySpace) {
+
+		switch(key) {
+
+		}
+	}
+	else {
+		switch(key) {
+		case 'a':	// push manauly
+
+			glutPostRedisplay();
+			break;
+		case 'b':	// manualy function 1
+		case 'c':	// manualy function 2
+		case 'd':	// manualy function 3
+		case 'e':	// manualy function 3
+			m_content->func_manualy(key-'a');
+			glutPostRedisplay();
+			break;
+		}
+	}
+
 
 
 

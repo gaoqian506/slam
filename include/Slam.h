@@ -43,6 +43,8 @@ private:
 	Vec3d calc_delta_t();
 	Vec3d calc_delta_r();
 	void wipe_depth(const Vec3d& t);
+	void create_keyframe(Image* image);
+	void update_depth();
 
 
 	VideoSource* m_source;

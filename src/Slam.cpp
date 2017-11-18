@@ -181,7 +181,7 @@ void Slam::func_manualy(int idx) {
 	case 4:
 		if (m_frame) {
 			prepare_residual();
-			update_keyframe(NULL);
+			update_depth();
 		}
 		break;
 	}
@@ -299,7 +299,7 @@ void Slam::update_pose(){
 		if (res - pre_res < 0.0001) { break; }
 		m_frame->pos += calc_delta_t();
 		MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
-		wipe_depth(m_frame->pos);
+		//wipe_depth(m_frame->pos);
 		//... collect other deltas
 		pre_res = res;
 	}
@@ -311,48 +311,15 @@ void Slam::update_keyframe(Image* image){
 
 	std::cout << "Slam::update_keyframe" << std::endl;
 
-	if (m_key == NULL) {
-	
-		int w = image->width();
-		int h = image->height();
-		m_key = new Camera();
-		SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
-		
-		image->copy_to(m_key->original);
-		image->gray(m_key->gray);
-		m_key->depth = new CvImage(w, h, Image::Float32);
-
-		m_key->depth->set(0.1);
-		m_key->points = new CvImage(w, h, Image::Float32, 4);
-
-		m_keyframes.push_back(m_key);
-		m_cameras[m_camera_count] = m_key;
-	
-		m_camera_count++;
+	if (m_key == NULL) { //or need add a new keyframe
+		create_keyframe(image);
 	}
 	else {
-
-		Vec2f* pGrad = (Vec2f*)m_gradient->data();
-		float* pDg = (float*)m_residual->data();
-		float* pDepth = (float*)m_depth->data();
-		Vec4f* pPts = (Vec4f*)m_frame->points->data();
-		unsigned char* pMask = (unsigned char*)m_mask->data();
-		float* p_kd = (float*)m_key->depth->data();
-		const Vec3d& t = m_frame->pos;
-		int total = m_width * m_height;
-		double a[3];
-		double a2, temp;
-		for (int i = 0; i < total; i++) {
-			if (!pMask[i]) { continue; }
-			temp = m_frame->intrinsic.f*pDepth[i]/p_kd[i];
-			a[0] = pGrad[i][0]*temp;
-			a[1] = pGrad[i][1]*temp;
-			a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
-			a2 = a[0]*t[0]+a[1]*t[1]+a[2]*t[2];
-			p_kd[i] += a2*pDg[i] / (100 + a2*a2);
-		}
+		// while(need upadte depth) {
+			// prepare residual
+			// update_depth
+		//}
 	}
-	
 
 }
 void Slam::update_map(){
@@ -468,7 +435,7 @@ Vec3d Slam::calc_delta_t() {
 		temp = m_frame->intrinsic.f*pDepth[i];
 		a[0] = pGrad[i][0]*temp;
 		a[1] = pGrad[i][1]*temp;
-		a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
+		a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][1]);
 		
 		A[0] += w*a[0]*a[0];
 		A[1] += w*a[0]*a[1];
@@ -573,6 +540,9 @@ Vec3d Slam::calc_delta_r() {
 
 void Slam::wipe_depth(const Vec3d& t) {
 	
+
+	assert(0);
+
 	int total = m_residual->width() * m_residual->height();
 	Vec2f* pGrad = (Vec2f*)m_gradient->data();
 	float* pd = (float*)m_key->depth->data();
@@ -598,6 +568,97 @@ void Slam::wipe_depth(const Vec3d& t) {
 }
 
 
+void Slam::create_keyframe(Image* image) {
+
+	int w = image->width();
+	int h = image->height();
+	m_key = new Camera();
+	SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
+	
+	image->copy_to(m_key->original);
+	image->gray(m_key->gray);
+	m_key->depth = new CvImage(w, h, Image::Float32);
+
+	m_key->depth->set(0.1);
+	m_key->points = new CvImage(w, h, Image::Float32, 4);
+
+	m_keyframes.push_back(m_key);
+	m_cameras[m_camera_count] = m_key;
+
+	m_camera_count++;
+
+}
+void Slam::update_depth() {
+
+
+	Vec2f* pGrad = (Vec2f*)m_gradient->data();
+	float* pDg = (float*)m_residual->data();
+	float* pDepth = (float*)m_depth->data();
+	Vec4f* pPts = (Vec4f*)m_frame->points->data();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	float* p_kd = (float*)m_key->depth->data();
+	float* p_kg = (float*)m_key->gray->data();
+	const Vec3d& t = m_frame->pos;
+	int total = m_width * m_height;
+	double iuux[3];
+	double a, a2, temp;
+	double ddi, dds, l1, l2, wij, gg, dd, wsum;
+	double A = m_frame->intrinsic.f;
+	int u, v, u2, v2, j;
+
+	int offsetid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offsetx[9] = {
+		-1, 0, 1, -1, 0, 1, -1, 0, 1
+	};
+	int offsety[9] = {
+		-1, -1, -1, 0, 0, 0, 1, 1, 1
+	};
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+		
+		if (pMask[i]) {
+			//temp = m_frame->intrinsic.f*pDepth[i]/p_kd[i];
+			temp = m_frame->intrinsic.f;//*pDepth[i]/p_kd[i];
+			iuux[0] = pGrad[i][0]*temp;
+			iuux[1] = pGrad[i][1]*temp;
+			iuux[2] = -(iuux[0]*pPts[i][0]+iuux[1]*pPts[i][1]);
+			a = iuux[0]*t[0]+iuux[1]*t[1]+iuux[2]*t[2];
+			a2 = a*a;
+			ddi = a*pDg[i]/(A+a2);
+		}
+		else {
+			a = 0;
+			a2 = 0;
+			ddi = 0;
+		}
+		dds = 0;
+		wsum = 0;
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offsetx[k];
+			v2 = v + offsety[k];
+			if (u2 >= 0 && u2 < m_width && v2 >=0 && v2 < m_height) {
+				gg = p_kg[i+offsetid[k]]-p_kg[i];
+				dd = p_kd[i+offsetid[k]]-p_kd[i];
+				wij = exp(-gg*gg/0.01);
+				dds += wij * dd;
+				wsum += wij;
+			}
+		}
+		dds /= wsum;
+		
+		l1 = a2/(A+a2);
+		l2 = A/(A+a2);
+		p_kd[i] += l1*ddi + l2*dds;
+	}
+}
+
 
 } // namespace
 
@@ -607,6 +668,55 @@ void Slam::wipe_depth(const Vec3d& t) {
 /***************************
 
 
+
+			j = i + offset[k];
+			//if (j < 0) { continue; }
+			u2 = j % m_width;
+			v2 = j / m_width;
+
+
+	if (m_key == NULL) {
+	
+		int w = image->width();
+		int h = image->height();
+		m_key = new Camera();
+		SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
+		
+		image->copy_to(m_key->original);
+		image->gray(m_key->gray);
+		m_key->depth = new CvImage(w, h, Image::Float32);
+
+		m_key->depth->set(0.1);
+		m_key->points = new CvImage(w, h, Image::Float32, 4);
+
+		m_keyframes.push_back(m_key);
+		m_cameras[m_camera_count] = m_key;
+	
+		m_camera_count++;
+	}
+	else {
+
+		Vec2f* pGrad = (Vec2f*)m_gradient->data();
+		float* pDg = (float*)m_residual->data();
+		float* pDepth = (float*)m_depth->data();
+		Vec4f* pPts = (Vec4f*)m_frame->points->data();
+		unsigned char* pMask = (unsigned char*)m_mask->data();
+		float* p_kd = (float*)m_key->depth->data();
+		const Vec3d& t = m_frame->pos;
+		int total = m_width * m_height;
+		double a[3];
+		double a2, temp;
+		for (int i = 0; i < total; i++) {
+			if (!pMask[i]) { continue; }
+			temp = m_frame->intrinsic.f*pDepth[i]/p_kd[i];
+			a[0] = pGrad[i][0]*temp;
+			a[1] = pGrad[i][1]*temp;
+			a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
+			a2 = a[0]*t[0]+a[1]*t[1]+a[2]*t[2];
+			p_kd[i] += a2*pDg[i] / (100 + a2*a2);
+		}
+	}
+	
 
 
 
