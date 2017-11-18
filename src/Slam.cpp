@@ -349,7 +349,7 @@ void Slam::update_keyframe(Image* image){
 			a[1] = pGrad[i][1]*temp;
 			a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
 			a2 = a[0]*t[0]+a[1]*t[1]+a[2]*t[2];
-			p_kd[i] += pDg[i] / (100 + a2);
+			p_kd[i] += a2*pDg[i] / (100 + a2*a2);
 		}
 	}
 	

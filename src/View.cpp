@@ -137,6 +137,17 @@ void View::display() {
 
 void View::keyboard(unsigned char key,int x,int y) {
 
+	switch(key) {
+	case 48:	// '0'
+		m_display_aspect = DisplaySpace;
+		glutPostRedisplay();
+		break;
+	case 49:	// '1'
+		m_display_aspect = DisplayImage;
+		glutPostRedisplay();
+		break;
+	}
+
 	double dist = 0.1;
 
 	if (m_display_aspect == DisplaySpace) {
@@ -162,15 +173,6 @@ void View::keyboard(unsigned char key,int x,int y) {
 	}
 	else {
 		switch(key) {
-		//Enter
-		case 48:	// '0'
-			m_display_aspect = DisplaySpace;
-			glutPostRedisplay();
-			break;
-		case 49:	// '1'
-			m_display_aspect = DisplayImage;
-			glutPostRedisplay();
-			break;
 		case 'a':	// push manauly
 			m_content->push_manauly();
 			glutPostRedisplay();
