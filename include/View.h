@@ -43,7 +43,7 @@ public:
 	void draw_cameras();
 	void draw_points();
 	void draw_mesh();
-	void draw_camera_instance(Camera* camera);
+	void draw_camera_instance(Camera* camera, bool with_points = true);
 	ViewContent* content() { return m_content; }
 
 	

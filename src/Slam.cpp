@@ -146,10 +146,12 @@ void Slam::push_manauly() {
 		image->resize(resized);
 		initialize(resized);
 		push(resized);
+		//preprocess(image);
+		//update_keyframe(image);
 	}
 	//m_changed = false;
-	if (image) { delete image; }
-	if (resized) { delete resized; }
+	if (image) { delete image; image = 0; }
+	if (resized) { delete resized; resized = 0; }
 	
 	std::cout << "leave Slam::start" << std::endl;
 
@@ -196,6 +198,7 @@ char* Slam::pixel_info(const Vec2d& u) {
 	}
 	int idx = ((int)u[1]) * m_width + ((int)u[0]);
 	sprintf(m_pixel_info, 
+		"image size: %d, %d\n"
 		"pos:%f, %f\n"
 		"key:%f cur:%f res:%f mask:%d\n"
 		"grad: %f, %f\n"
@@ -204,6 +207,7 @@ char* Slam::pixel_info(const Vec2d& u) {
 		"R: %f, %f, %f\n"
 		"   %f, %f, %f\n"
 		"   %f, %f, %f\n",
+		m_width, m_height,
 		u[0], u[1],
 		m_key ? *((float*)m_key->gray->at(idx)) : 0.0,
 		m_frame ? *((float*)m_frame->gray->at(idx)) : 0.0,

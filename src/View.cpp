@@ -284,7 +284,7 @@ void View::draw_content() {
 	Camera* current = m_content->get_current_frame();
 	if (current) {
 		glColor3d(0.57,4.623,7.222);
-		//draw_camera_instance(current);
+		draw_camera_instance(current, false);
 	}
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();	
@@ -427,10 +427,11 @@ void View::draw_mesh() {
 	std::cout << "View::draw_mesh" << std::endl;
 }
 
-void View::draw_camera_instance(Camera* camera) {
+void View::draw_camera_instance(Camera* camera, bool with_points /*=with_points*/) {
+
 	std::cout << "View::draw_camera_instance" << std::endl;
 	if (!camera->gray) { return; }
-	GlToolbox::transform_to(camera->pos, camera->rotation);
+	GlToolbox::transform_to(camera->pos, camera->rotation, true);
 	
 	int width = camera->gray->width();
 	int height = camera->gray->height();
@@ -456,7 +457,7 @@ void View::draw_camera_instance(Camera* camera) {
 	}
 	glEnd();
 	
-	if (camera->points) {
+	if (with_points && camera->points) {
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(4, GL_FLOAT, 0, camera->points->data());
 		glDrawArrays(GL_POINTS, 0, width*height);

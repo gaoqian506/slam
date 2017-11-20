@@ -3,6 +3,6 @@
 namespace ww {
 
 
-	int Config::max_width = 640;
+	int Config::max_width = 160;
 	bool Config::manually_content = true;
 }

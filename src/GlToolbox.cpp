@@ -59,7 +59,7 @@ void GlToolbox::orthogonal_pixel(Origin ori/* = Center*/) {
 }
 
 
-void GlToolbox::transform_to(const Vec3d& pose, const Vec9d& rotation) {
+void GlToolbox::transform_to(const Vec3d& pose, const Vec9d& rotation, bool inverse/* = false*/) {
 
 
 	double M[16] = {
@@ -69,7 +69,20 @@ void GlToolbox::transform_to(const Vec3d& pose, const Vec9d& rotation) {
 		0, 0, 0, 1
 	};
 	glMatrixMode(GL_MODELVIEW);
-	glMultTransposeMatrixd(M);
+
+	if (inverse) {
+		double M2[16] = {
+			M[0], M[4], M[8], -(M[0]*M[3]+M[4]*M[7]+M[8]*M[11]),
+			M[1], M[5], M[9], -(M[1]*M[3]+M[5]*M[7]+M[9]*M[11]),
+			M[2], M[6], M[10], -(M[2]*M[3]+M[6]*M[7]+M[10]*M[11]),
+			0, 0, 0, 1
+		};
+		glMultTransposeMatrixd(M2);
+	}
+	else {
+		glMultTransposeMatrixd(M);
+	}
+
 
 }
 
