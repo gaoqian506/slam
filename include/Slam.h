@@ -34,14 +34,21 @@ private:
 
 	void initialize(Image* image);
 	void push(Image* image);
+	void push_epi(Image* image);
 	void preprocess(Image* image);
+	void make_epi_line(Camera* camera);
 	void update_pose();
+	void calc_epipolar();
+	void calc_epi_trans();
 	void update_keyframe(Image* image);
 	void update_map();
 
 	void prepare_residual();
+	void prepare_residual_epi();
 	Vec3d calc_delta_t();
 	Vec3d calc_delta_r();
+	Vec3d calc_epi_point();
+	Vec3d calc_epi_dr();
 	void wipe_depth(const Vec3d& t);
 	void create_keyframe(Image* image);
 	void update_depth();
@@ -61,10 +68,12 @@ private:
 	Image* m_depth;
 	Image* m_iuux;
 	Image* m_debug_image;
+	Image* m_epi_line;
 	bool m_changed;
 	char m_pixel_info[MAX_PIXEL_INFO];
 	int m_width;
 	int m_height;
+	std::string m_image_name;
 
 };
 

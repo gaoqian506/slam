@@ -31,6 +31,7 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_depth = NULL;
 	m_iuux = NULL;
 	m_debug_image = NULL;
+	m_epi_line = NULL;
 
 	m_pixel_info[0] = 0;
 	
@@ -99,18 +100,31 @@ Image* Slam::get_debug_image(const int& idx) {
 
 	if (idx == 0) {
 		which = m_key ? m_key->gray : NULL;
+		m_image_name = "key frame gray";
 	}
 	else if (idx == 1) {
 		which = m_frame ? m_frame->gray : NULL;
+		m_image_name = "current frame gray";
 	}
 	else if (idx == 2) {
 		which = m_residual;
+		m_image_name = "residual";
 	}
 	else if (idx == 3) {
-		which = m_mask;
+		which = m_frame ? m_frame->gradient[0] : NULL;
+		m_image_name = "current frame gradient x";
 	}
 	else if (idx == 4) {
+		which = m_frame ? m_frame->gradient[1] : NULL;
+		m_image_name = "current frame gradient y";
+	}
+	else if (idx == 5) {
+		which = m_mask;
+		m_image_name = "mask";
+	}
+	else if (idx == 6) {
 		which = m_key ? m_key->depth : NULL;
+		m_image_name = "key frame depth";
 	}
 	else {
 		which = NULL;
@@ -145,13 +159,16 @@ void Slam::push_manauly() {
 	if(m_source->read(image)) {
 		image->resize(resized);
 		initialize(resized);
-		push(resized);
+		if (Config::epipolar_mode) {
+			push_epi(resized);
+		}
+		else { push(resized); }
 		//preprocess(image);
 		//update_keyframe(image);
 	}
 	//m_changed = false;
-	if (image) { delete image; image = 0; }
-	if (resized) { delete resized; resized = 0; }
+	if (image) { delete image; }
+	if (resized) { delete resized; }
 	
 	std::cout << "leave Slam::start" << std::endl;
 
@@ -162,10 +179,15 @@ void Slam::func_manualy(int idx) {
 	switch (idx) {
 
 	case 1:
-		if (m_frame) {
+		if (m_frame && !Config::epipolar_mode) {
 			prepare_residual();
 			m_frame->pos += calc_delta_t();
 		}
+		if (m_frame && Config::epipolar_mode) {
+			prepare_residual_epi();
+			m_frame->epi_point = calc_epi_point();
+		}
+
 		break;
 	case 2:
 		if (m_frame) {
@@ -197,25 +219,39 @@ char* Slam::pixel_info(const Vec2d& u) {
 		return NULL;
 	}
 	int idx = ((int)u[1]) * m_width + ((int)u[0]);
+
+	Vec3f* pl = m_epi_line ? (Vec3f*)m_epi_line->data() : NULL;
 	sprintf(m_pixel_info, 
 		"image size: %d, %d\n"
+		"active: %s\n"
 		"pos:%f, %f\n"
 		"key:%f cur:%f res:%f mask:%d\n"
 		"grad: %f, %f\n"
+		"epi line: %f, %f, %f\n"
 		"depth: %f\n"
+		"e: %f, %f, %f\n"
 		"t: %f, %f, %f\n"
 		"R: %f, %f, %f\n"
 		"   %f, %f, %f\n"
 		"   %f, %f, %f\n",
 		m_width, m_height,
+		m_image_name.c_str(),
 		u[0], u[1],
 		m_key ? *((float*)m_key->gray->at(idx)) : 0.0,
 		m_frame ? *((float*)m_frame->gray->at(idx)) : 0.0,
 		*((float*)m_residual->at(idx)),
 		*((unsigned char*)m_mask->at(idx)),
-		((Vec2f*)m_gradient->at(idx))[0][0],
-		((Vec2f*)m_gradient->at(idx))[0][1],
+		m_frame ? ((float*)m_frame->gradient[0]->at(idx))[0] : 0,
+		m_frame ? ((float*)m_frame->gradient[1]->at(idx))[0] : 0,
+		pl ? pl[idx][0] : 0,
+		pl ? pl[idx][1] : 0,
+		pl ? pl[idx][2] : 0,
+		//((Vec2f*)m_gradient->at(idx))[0][0],
+		//((Vec2f*)m_gradient->at(idx))[0][1],
 		m_key ? *((float*)m_key->depth->at(idx)) : 0.0,
+		m_frame ? m_frame->epi_point[0] : 0,
+		m_frame ? m_frame->epi_point[1] : 0,
+		m_frame ? m_frame->epi_point[2] : 0,
 		m_frame ? m_frame->pos[0] : 0,
 		m_frame ? m_frame->pos[1] : 0,
 		m_frame ? m_frame->pos[2] : 0,
@@ -249,6 +285,7 @@ void Slam::initialize(Image* image) {
 	m_gradient = new CvImage(w, h, Image::Float32, 2);
 	m_depth = new CvImage(w, h, Image::Float32);
 	//m_iuux = new CvImage(w, h, Image::Float32, 3);
+	m_epi_line = new CvImage(w, h, Image::Float32, 3);
 }
 
 void Slam::push(Image* image) {
@@ -265,27 +302,56 @@ void Slam::push(Image* image) {
 //	}
 }
 
+void Slam::push_epi(Image* image) {
+
+	preprocess(image);
+	calc_epipolar();
+	calc_epi_trans();
+	update_keyframe(image);
+	// refine_map();
+}
+
 
 void Slam::preprocess(Image* image){
 
 	std::cout << "Slam::preprocess" << std::endl;
 	
-	if (m_key) {
-		if (!m_frame) {
-			int w = image->width();
-			int h = image->height();
-			m_frame = new Camera();
-			SpaceToolbox::init_intrinsic(m_frame->intrinsic, 45, w, h);
-		
-			m_frame->points = new CvImage(w, h, Image::Float32, 4);
-		}
-		image->gray(m_frame->gray);
-		m_frame->gray->sobel_x(m_frame->gradient[0]);
-		m_frame->gray->sobel_y(m_frame->gradient[1]);
+	if (!m_frame) {
+		m_frame = new Camera();
+		SpaceToolbox::init_intrinsic(m_frame->intrinsic, 45, m_width, m_height);
+		m_frame->points = new CvImage(m_width, m_height, Image::Float32, 4);
 
 	}
-	
+	image->gray(m_frame->gray);
+	m_frame->gray->sobel_x(m_frame->gradient[0]);
+	m_frame->gray->sobel_y(m_frame->gradient[1]);
+	if (Config::epipolar_mode) {
+		make_epi_line(m_frame);
+	}
 }
+
+void Slam::make_epi_line(Camera* camera) {
+
+	int total = m_width * m_height;
+	int u, v;
+	double f = camera->intrinsic.f;
+	double f1 = 1.0 / f;
+	double f2 = f1 * f1;
+	Vec3f* pl = (Vec3f*)m_epi_line->data();
+	float* piu = (float*)camera->gradient[0]->data();
+	float* piv = (float*)camera->gradient[1]->data();
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width-camera->intrinsic.cx;
+		v = i / m_width-camera->intrinsic.cy;
+
+		pl[i][0] = -piv[i];
+		pl[i][1] = +piu[i];
+		pl[i][2] = (piv[i]*u-piu[i]*v)*f1;
+		
+	}
+}
+
 void Slam::update_pose(){
 
 	std::cout << "Slam::update_pose" << std::endl;
@@ -307,6 +373,34 @@ void Slam::update_pose(){
 		//... collect other deltas
 		pre_res = res;
 	}
+
+}
+
+void Slam::calc_epipolar() {
+
+	if (Config::manually_content) { return; }
+	if (!m_key || !m_frame) { return; }
+	while(true) {
+		prepare_residual_epi();
+		m_frame->epi_point = calc_epi_point();
+		MatrixToolbox::update_rotation(m_frame->rotation, calc_epi_dr());
+		break;
+	}
+
+
+	
+
+}
+void Slam::calc_epi_trans() {
+
+	if (Config::manually_content) { return; }
+	if (!m_key || !m_frame) { return; }
+	while(true) {
+		//prepare_residual_epi();
+		//m_frame->pos = calc_epi_pos();
+		break;
+	}
+
 
 }
 
@@ -414,6 +508,61 @@ void Slam::prepare_residual() {
 
 	}
 
+
+}
+
+void Slam::prepare_residual_epi() {
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+
+	double KRKi[9];
+
+	SpaceToolbox::make_KRKi(
+		m_key->intrinsic,
+		m_frame->rotation,
+		m_frame->intrinsic,
+		KRKi
+	);
+	
+	int u, v;
+	Vec3d m;
+	float* pfloat;
+
+	unsigned char* p_mask = (unsigned char*)m_mask->data();
+	float* p_gkey = (float*)m_key->gray->data();
+	float* p_gframe = (float*)m_frame->gray->data();
+	float* p_dg = (float*)m_residual->data();
+
+
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width;
+		v = i / m_width;
+
+		m[0] = KRKi[0]*u+KRKi[1]*v+KRKi[2];
+		m[1] = KRKi[3]*u+KRKi[4]*v+KRKi[5];
+		m[2] = KRKi[6]*u+KRKi[7]*v+KRKi[8];
+		m /= m[2];
+		
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			p_mask[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+			pfloat = p_gkey + v * m_width + u;
+			p_dg[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]) - p_gframe[i];
+		}
+		else { 
+			p_mask[i] = 0;
+			p_dg[i] = 0;
+		}
+
+	}
 
 }
 
@@ -542,6 +691,66 @@ Vec3d Slam::calc_delta_r() {
 
 }
 
+Vec3d Slam::calc_epi_point() {
+
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	//Vec2f* pGrad = (Vec2f*)m_gradient->data();
+	float* pdg = (float*)m_residual->data();
+	Vec3f* pl = (Vec3f*)m_epi_line->data();
+	//float* pDepth = (float*)m_depth->data();
+	//Vec4f* pPts = (Vec4f*)m_frame->points->data();
+	int total = m_width * m_height;
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	
+	//double a[3];
+	double w;//, temp;
+	
+	double dg2;
+	Vec9d A;
+	//Vec3d B;
+	
+	for (int i = 0; i < total; i++) {
+		if (!pMask[i]) { continue; }
+		//w = 1;//(std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
+		//temp = m_frame->intrinsic.f*pDepth[i];
+		w = pdg[i]*pdg[i];
+		const Vec3f& a = pl[i];
+		//a[0] = pGrad[i][0]*temp;
+		//a[1] = pGrad[i][1]*temp;
+		//a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][1]);
+		
+		A[0] += w*a[0]*a[0];
+		A[1] += w*a[0]*a[1];
+		A[2] += w*a[0]*a[2];
+		A[4] += w*a[1]*a[1];
+		A[5] += w*a[1]*a[2];
+		A[8] += w*a[2]*a[2];
+		
+		//B[0] += w*a[0]*pDg[i];
+		//B[1] += w*a[1]*pDg[i];
+		//B[2] += w*a[2]*pDg[i];
+	}
+	
+	A[3] = A[1];
+	A[6] = A[2];
+	A[7] = A[5];
+	
+	//A /= total;
+	//B /= total;
+
+	//A[0] += 1;
+	//A[4] += 1;
+	//A[8] += 1;
+
+	return MatrixToolbox::min_eigen_vector_3x3(A);
+	
+}
+Vec3d Slam::calc_epi_dr() {
+	return Vec3d();
+}
+
 void Slam::wipe_depth(const Vec3d& t) {
 	
 
@@ -574,21 +783,22 @@ void Slam::wipe_depth(const Vec3d& t) {
 
 void Slam::create_keyframe(Image* image) {
 
-	int w = image->width();
-	int h = image->height();
-	m_key = new Camera();
-	SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
-	
-	image->copy_to(m_key->original);
-	image->gray(m_key->gray);
-	m_key->depth = new CvImage(w, h, Image::Float32);
+	Camera* pre_key = m_key;
+	m_key = m_frame;
+	m_frame = NULL;
 
-	m_key->depth->set(0.1);
-	m_key->points = new CvImage(w, h, Image::Float32, 4);
+	//SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, m_width, m_height);
+	
+	//image->copy_to(m_key->original);
+	//image->gray(m_key->gray);
+
+	m_key->depth = new CvImage(m_width, m_height, Image::Float32);
+	if (!pre_key) {
+		m_key->depth->set(0.1);
+	}
 
 	m_keyframes.push_back(m_key);
 	m_cameras[m_camera_count] = m_key;
-
 	m_camera_count++;
 
 }
@@ -672,6 +882,45 @@ void Slam::update_depth() {
 /***************************
 
 
+
+	const Intrinsic& intri0 = m_key->intrinsic;
+	//float invf0 = 1 / m_key->intrinsic.f;
+	const Intrinsic& intri1 = m_frame->intrinsic;
+	
+	const Vec9d& R = m_frame->rotation;
+
+	int w = image->width();
+	int h = image->height();
+	m_key = new Camera();
+	SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
+	
+	image->copy_to(m_key->original);
+	image->gray(m_key->gray);
+	m_key->depth = new CvImage(w, h, Image::Float32);
+
+	m_key->depth->set(0.1);
+	m_key->points = new CvImage(w, h, Image::Float32, 4);
+
+	m_keyframes.push_back(m_key);
+	m_cameras[m_camera_count] = m_key;
+
+	m_camera_count++;
+
+
+	if (m_key) {
+		if (!m_frame) {
+			int w = image->width();
+			int h = image->height();
+			m_frame = new Camera();
+			SpaceToolbox::init_intrinsic(m_frame->intrinsic, 45, w, h);
+		
+			m_frame->points = new CvImage(w, h, Image::Float32, 4);
+		}
+		image->gray(m_frame->gray);
+		m_frame->gray->sobel_x(m_frame->gradient[0]);
+		m_frame->gray->sobel_y(m_frame->gradient[1]);
+
+	}
 
 			j = i + offset[k];
 			//if (j < 0) { continue; }

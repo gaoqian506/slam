@@ -32,10 +32,13 @@ shanghai:
 	./$(TARGET) data/videos/shanghai.mp4
 	
 move_left_8x8:
-	./$(TARGET) data/images/move_left_8x8/001.png data/images/move_left_8x8/002.png
+	./$(TARGET) data/images/move_left_8x8_001.png data/images/move_left_8x8_002.png
+
+move_left_64x64:
+	./$(TARGET) data/images/move_left_64x64_001.png data/images/move_left_64x64_002.png
 	
 tsukuba:
-	./$(TARGET) data/images/tsukuba/tsukuba_l.png data/images/tsukuba/tsukuba_r.png
+	./$(TARGET) data/images/tsukuba_l.png data/images/tsukuba_r.png
 	
 debug:
 	gdb ./$(TARGET)

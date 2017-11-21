@@ -26,6 +26,8 @@ static void rotate(Vec16d& T, const Vec9d& R);
 
 static void translate(Vec16d& T, const Vec3d& t);
 
+static void make_KRKi(Intrinsic intri0, const Vec9d& R, Intrinsic intri1, double* out);
+
 };
 
 

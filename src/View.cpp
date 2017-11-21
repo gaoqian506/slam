@@ -463,6 +463,7 @@ void View::draw_camera_instance(Camera* camera, bool with_points /*=with_points*
 		glDrawArrays(GL_POINTS, 0, width*height);
 		glDisableClientState(GL_VERTEX_ARRAY);
 	}
+
 }
 
 void View::start_content() {

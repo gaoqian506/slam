@@ -11,6 +11,7 @@ public:
 
 	static int max_width;
 	static bool manually_content;
+	static bool epipolar_mode;
 
 
 };

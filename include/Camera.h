@@ -27,6 +27,7 @@ public:
 	Vec3f unproject(const float& u, const float& v, const float& d);
 	Vec3f project(const Vec3f& pt);
 
+	Vec3d epi_point;
 	Vec3d pos;
 	Vec9d rotation;
 	double radius;
@@ -37,6 +38,7 @@ public:
 	Image* gradient[2];
 	Image* depth;
 	Image* points;
+	Image* epi_line;
 	//Image* residual;
 };
 

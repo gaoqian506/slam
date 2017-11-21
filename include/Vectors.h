@@ -33,6 +33,10 @@ struct Vec3f {
 		return val[idx];
 	}
 
+	const float& operator[](int idx) const {
+		return val[idx];
+	}
+
 	
 	float length2() { return val[0]*val[0]+val[1]*val[1]+val[2]*val[2]; }
 	float val[3];
@@ -106,6 +110,10 @@ struct Vec3d {
 		val[0] = a;
 		val[1] = b;
 		val[2] = c;
+	}
+
+	Vec3d(double* p) {
+		memcpy(val, p, sizeof(val));
 	}
 	
 	double& operator[](int idx) {

@@ -1,5 +1,6 @@
 
 #include "SpaceToolbox.h"
+#include "MatrixToolbox.h"
 #include <assert.h>
 #include <math.h>
 
@@ -86,6 +87,31 @@ void SpaceToolbox::translate(Vec16d& T, const Vec3d& t) {
 	T[7] += t[1];
 	T[11] += t[2];
 	
+}
+
+void SpaceToolbox::make_KRKi(Intrinsic intri0, const Vec9d& R, Intrinsic intri1, double* out) {
+
+	Vec9d Ki;
+	double invf = 1.0 / intri0.f;
+	Ki[0] = invf;
+	Ki[2] = -intri0.cx * invf;
+	Ki[4] = invf;
+	Ki[5] = -intri0.cy * invf;
+	Ki[8] = 1;
+
+	Vec9d RKi = MatrixToolbox::mult_matrix_3x3(R, Ki);
+
+	Vec9d K;
+	K[0] = intri1.f;
+	K[2] = intri1.cx;
+	K[4] = intri1.f;
+	K[5] = intri1.cy;
+	K[8] = 1;
+
+	Vec9d KRKi = MatrixToolbox::mult_matrix_3x3(K, RKi);
+
+	memcpy(out, KRKi.val, sizeof(KRKi));
+
 }
 
 } // namespace

@@ -76,11 +76,45 @@ void MatrixToolbox::identity(Vec16d& M) {
 
 }
 
+Vec9d MatrixToolbox::mult_matrix_3x3(const Vec9d& m1, const Vec9d& m2) {
+	
+	Vec9d re;
+	re[0] = m1[0]*m2[0]+m1[1]*m2[3]+m1[2]*m2[6];
+	re[1] = m1[0]*m2[1]+m1[1]*m2[4]+m1[2]*m2[7];
+	re[2] = m1[0]*m2[2]+m1[1]*m2[5]+m1[2]*m2[8];
+
+	re[3] = m1[3]*m2[0]+m1[4]*m2[3]+m1[5]*m2[6];
+	re[4] = m1[3]*m2[1]+m1[4]*m2[4]+m1[5]*m2[7];
+	re[5] = m1[3]*m2[2]+m1[4]*m2[5]+m1[5]*m2[8];
+
+	re[6] = m1[6]*m2[0]+m1[7]*m2[3]+m1[8]*m2[6];
+	re[7] = m1[6]*m2[1]+m1[7]*m2[4]+m1[8]*m2[7];
+	re[8] = m1[6]*m2[2]+m1[7]*m2[5]+m1[8]*m2[8];
+
+	return re;
+}
+
+Vec3d MatrixToolbox::min_eigen_vector_3x3(const Vec9d& A) {
+
+	double A_[9];
+	memcpy(A_, A.val, sizeof(A_));
+
+	cv::Mat M = cv::Mat(3, 3, CV_64F, A_);
+	cv::SVD svd(M);
+	return Vec3d(svd.vt.ptr<double>(2));
+
+}
+
 } // namespace
 
 
 /*******************************
 
+
+	//svd.u.col(2).copyTo(t);
+	//int a = svd.vt.type();
+	//int b = CV_64F;
+	//return Vec3d();
 
 cos(eula[1])*cos(eula[0])-cos(eula[2])*sin(eula[1])*sin(eula[0]), 
 		-cos(eula[2])*cos(eula[0])*sin(eula[1])-cos(eula[1])*sin(eula[0]),
