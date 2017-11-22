@@ -103,26 +103,30 @@ Image* Slam::get_debug_image(const int& idx) {
 		m_image_name = "key frame gray";
 	}
 	else if (idx == 1) {
+		which = m_warp;
+		m_image_name = "warp";
+	}
+	else if (idx == 2) {
 		which = m_frame ? m_frame->gray : NULL;
 		m_image_name = "current frame gray";
 	}
-	else if (idx == 2) {
+	else if (idx == 3) {
 		which = m_residual;
 		m_image_name = "residual";
 	}
-	else if (idx == 3) {
+	else if (idx == 4) {
 		which = m_frame ? m_frame->gradient[0] : NULL;
 		m_image_name = "current frame gradient x";
 	}
-	else if (idx == 4) {
+	else if (idx == 5) {
 		which = m_frame ? m_frame->gradient[1] : NULL;
 		m_image_name = "current frame gradient y";
 	}
-	else if (idx == 5) {
+	else if (idx == 6) {
 		which = m_mask;
 		m_image_name = "mask";
 	}
-	else if (idx == 6) {
+	else if (idx == 7) {
 		which = m_key ? m_key->depth : NULL;
 		m_image_name = "key frame depth";
 	}
@@ -159,7 +163,7 @@ void Slam::push_manauly() {
 	if(m_source->read(image)) {
 		image->resize(resized);
 		initialize(resized);
-		if (Config::epipolar_mode) {
+		if (Config::method == Config::Epipolar) {
 			push_epi(resized);
 		}
 		else { push(resized); }
@@ -179,27 +183,39 @@ void Slam::func_manualy(int idx) {
 	switch (idx) {
 
 	case 1:
-		if (m_frame && !Config::epipolar_mode) {
+		if (m_frame && Config::method == Config::Lsd) {
 			prepare_residual();
 			m_frame->pos += calc_delta_t();
 		}
-		if (m_frame && Config::epipolar_mode) {
+		if (m_frame && Config::method == Config::Epipolar) {
 			prepare_residual_epi();
 			m_frame->epi_point = calc_epi_point();
 		}
-
+		if (m_frame && Config::method == Config::Entropy) {
+			prepare_residual_epi();
+			m_frame->epi_point = calc_t_entropy();
+		}
 		break;
 	case 2:
-		if (m_frame) {
+		if (m_frame && Config::method == Config::Lsd) {
 			prepare_residual();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
 		}
+		if (m_frame && Config::method == Config::Entropy) {
+			prepare_residual_epi();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy());
+		}
 		break;
 	case 3:
-		if (m_frame) {
+		if (m_frame && Config::method == Config::Lsd) {
 			prepare_residual();
 			m_frame->pos += calc_delta_t();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_delta_r());
+		}
+		if (m_frame && Config::method == Config::Entropy) {
+			prepare_residual_epi();
+			m_frame->epi_point = calc_t_entropy();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy());
 		}
 		break;
 	case 4:
@@ -286,6 +302,7 @@ void Slam::initialize(Image* image) {
 	m_depth = new CvImage(w, h, Image::Float32);
 	//m_iuux = new CvImage(w, h, Image::Float32, 3);
 	m_epi_line = new CvImage(w, h, Image::Float32, 3);
+	m_warp = new CvImage(w, h, Image::Float32);
 }
 
 void Slam::push(Image* image) {
@@ -325,7 +342,7 @@ void Slam::preprocess(Image* image){
 	image->gray(m_frame->gray);
 	m_frame->gray->sobel_x(m_frame->gradient[0]);
 	m_frame->gray->sobel_y(m_frame->gradient[1]);
-	if (Config::epipolar_mode) {
+	if (Config::method == Config::Epipolar) {
 		make_epi_line(m_frame);
 	}
 }
@@ -456,6 +473,7 @@ void Slam::prepare_residual() {
 	float* p_dg = (float*)m_residual->data();
 	Vec2f* p_grad = (Vec2f*)m_gradient->data();
 	float* p_depth = (float*)m_depth->data();
+	float* p_warp = (float*)m_warp->data();
 	//Vec3f* p_iuux = (Vec3f*)m_iuux->data();
 	for (int i = 0; i < total; i++) {
 	
@@ -488,7 +506,9 @@ void Slam::prepare_residual() {
 			m[0] -= u;
 			m[1] -= v;
 			pfloat = (float*)(m_frame->gray->data()) + v * width + u;
-			p_dg[i] = p_gkey[i] - SAMPLE_2D(pfloat[0], pfloat[1], pfloat[width], pfloat[width+1], m[0], m[1]);
+
+			p_warp[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[width], pfloat[width+1], m[0], m[1]);
+			p_dg[i] = p_gkey[i] - p_warp[i];
 			
 			pfloat = (float*)(m_frame->gradient[0]->data()) + v * width + u;
 			p_grad[i][0] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[width], pfloat[width+1], m[0], m[1]);
@@ -503,6 +523,7 @@ void Slam::prepare_residual() {
 			p_dg[i] = 0;
 			p_grad[i] = 0;
 			p_depth[i] = 0;
+			p_warp[i] = 0;
 			//p_iuux[i] = 0;
 		}
 
@@ -523,7 +544,8 @@ void Slam::prepare_residual_epi() {
 		m_key->intrinsic,
 		m_frame->rotation,
 		m_frame->intrinsic,
-		KRKi
+		KRKi,
+		true
 	);
 	
 	int u, v;
@@ -534,7 +556,7 @@ void Slam::prepare_residual_epi() {
 	float* p_gkey = (float*)m_key->gray->data();
 	float* p_gframe = (float*)m_frame->gray->data();
 	float* p_dg = (float*)m_residual->data();
-
+	float* pwarp = (float*)m_warp->data();
 
 
 	for (int i = 0; i < total; i++) {
@@ -555,11 +577,13 @@ void Slam::prepare_residual_epi() {
 			m[0] -= u;
 			m[1] -= v;
 			pfloat = p_gkey + v * m_width + u;
-			p_dg[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]) - p_gframe[i];
+			pwarp[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]);
+			p_dg[i] = pwarp[i] - p_gframe[i];
 		}
 		else { 
 			p_mask[i] = 0;
 			p_dg[i] = 0;
+			pwarp[i] = 0;
 		}
 
 	}
@@ -712,6 +736,7 @@ Vec3d Slam::calc_epi_point() {
 	//Vec3d B;
 	
 	for (int i = 0; i < total; i++) {
+
 		if (!pMask[i]) { continue; }
 		//w = 1;//(std::abs(pGx[i])+std::abs(pGy[i]))*std::abs(pDg[i]);
 		//temp = m_frame->intrinsic.f*pDepth[i];
@@ -749,6 +774,113 @@ Vec3d Slam::calc_epi_point() {
 }
 Vec3d Slam::calc_epi_dr() {
 	return Vec3d();
+}
+
+Vec3d Slam::calc_dr_entropy() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	float* pDg = (float*)m_residual->data();
+	float* piu = (float*)m_frame->gradient[0]->data();
+	float* piv = (float*)m_frame->gradient[1]->data();
+	int total = m_width * m_height;
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	
+	double a[3], l[3], lxt[3], x[3];
+	double f = m_frame->intrinsic.f;
+	double f1 = 1.0 / f;
+	double w, temp;
+	Vec9d A;
+	Vec3d B;
+	const Vec3d& t = m_frame->epi_point;
+	int u, v;
+	x[2] = 1;
+
+	for (int i = 0; i < total; i++) {
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cx;
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+
+		l[0] = piu[i];
+		l[1] = piv[i];
+		l[2] = -(x[0]*piu[i]+x[1]*piv[i]);
+
+		lxt[0] = l[1]*t[2]-l[2]*t[1];
+		lxt[1] = l[2]*t[0]-l[0]*t[2];
+		lxt[2] = l[0]*t[1]-l[1]*t[0];
+
+		w = lxt[0]*lxt[0]+lxt[1]*lxt[1]+lxt[2]*lxt[2];
+		w *= 0.01;
+
+		a[0] = f*(x[1]*l[2]-x[2]*l[1]);
+		a[1] = f*(x[2]*l[0]-x[0]*l[2]);
+		a[2] = f*(x[0]*l[1]-x[1]*l[0]);
+
+		A[0] += w*a[0]*a[0];
+		A[1] += w*a[0]*a[1];
+		A[2] += w*a[0]*a[2];
+		A[4] += w*a[1]*a[1];
+		A[5] += w*a[1]*a[2];
+		A[8] += w*a[2]*a[2];
+		
+		B[0] += w*a[0]*pDg[i];
+		B[1] += w*a[1]*pDg[i];
+		B[2] += w*a[2]*pDg[i];
+	}
+	
+	A[3] = A[1];
+	A[6] = A[2];
+	A[7] = A[5];
+
+	A[0] += 1;
+	A[4] += 1;
+	A[8] += 1;
+
+	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
+	return Vec3d(
+		invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2],
+		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
+		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
+	);
+
+}
+
+Vec3d Slam::calc_t_entropy() {
+
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	int total = m_width * m_height;
+	int u, v, count = 0;
+	double f = m_frame->intrinsic.f;
+	double f1 = 1.0 / f;
+	float* piu = (float*)m_frame->gradient[0]->data();
+	float* piv = (float*)m_frame->gradient[1]->data();
+
+	float* pdg = (float*)m_residual->data();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	double w;
+	Vec3d t;
+	
+	
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+
+		if (!pMask[i]) { continue; }
+		count++;
+		w = pdg[i];
+		t[0] += w * piu[i];
+		t[1] += w * piv[i];
+		t[2] -= w * (u*f1*piu[i]+v*f1*piv[i]);
+	}
+	t /= count;
+	return t;
+
 }
 
 void Slam::wipe_depth(const Vec3d& t) {

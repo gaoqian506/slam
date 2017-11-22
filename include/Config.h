@@ -9,9 +9,12 @@ class Config {
 
 public:
 
+	enum Method { Lsd, Epipolar, Entropy };
+
 	static int max_width;
 	static bool manually_content;
-	static bool epipolar_mode;
+	//static bool epipolar_mode;
+	static Method method;
 
 
 };

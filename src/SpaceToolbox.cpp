@@ -89,7 +89,7 @@ void SpaceToolbox::translate(Vec16d& T, const Vec3d& t) {
 	
 }
 
-void SpaceToolbox::make_KRKi(Intrinsic intri0, const Vec9d& R, Intrinsic intri1, double* out) {
+void SpaceToolbox::make_KRKi(Intrinsic intri0, const Vec9d& R, Intrinsic intri1, double* out, bool invR/* = false*/) {
 
 	Vec9d Ki;
 	double invf = 1.0 / intri0.f;
@@ -99,7 +99,9 @@ void SpaceToolbox::make_KRKi(Intrinsic intri0, const Vec9d& R, Intrinsic intri1,
 	Ki[5] = -intri0.cy * invf;
 	Ki[8] = 1;
 
-	Vec9d RKi = MatrixToolbox::mult_matrix_3x3(R, Ki);
+	Vec9d RR = R;
+	if (invR) { RR = MatrixToolbox::transpose_3x3(R); }
+	Vec9d RKi = MatrixToolbox::mult_matrix_3x3(RR, Ki);
 
 	Vec9d K;
 	K[0] = intri1.f;

@@ -105,6 +105,23 @@ Vec3d MatrixToolbox::min_eigen_vector_3x3(const Vec9d& A) {
 
 }
 
+Vec9d MatrixToolbox::transpose_3x3(const Vec9d& M) {
+	Vec9d T;
+	T[0] = M[0];
+	T[1] = M[3];
+	T[2] = M[6];
+
+	T[3] = M[1];
+	T[4] = M[4];
+	T[5] = M[7];
+
+	T[6] = M[2];
+	T[7] = M[5];
+	T[8] = M[8];
+
+	return T;
+}
+
 } // namespace
 
 

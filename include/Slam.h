@@ -49,6 +49,8 @@ private:
 	Vec3d calc_delta_r();
 	Vec3d calc_epi_point();
 	Vec3d calc_epi_dr();
+	Vec3d calc_dr_entropy();
+	Vec3d calc_t_entropy();
 	void wipe_depth(const Vec3d& t);
 	void create_keyframe(Image* image);
 	void update_depth();
@@ -69,6 +71,7 @@ private:
 	Image* m_iuux;
 	Image* m_debug_image;
 	Image* m_epi_line;
+	Image* m_warp;
 	bool m_changed;
 	char m_pixel_info[MAX_PIXEL_INFO];
 	int m_width;
