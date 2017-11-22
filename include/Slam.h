@@ -45,12 +45,16 @@ private:
 
 	void prepare_residual();
 	void prepare_residual_epi();
+	void prepare_residual_entropy2(bool use_trans = false);
 	Vec3d calc_delta_t();
 	Vec3d calc_delta_r();
 	Vec3d calc_epi_point();
 	Vec3d calc_epi_dr();
 	Vec3d calc_dr_entropy();
+	Vec3d calc_dr_entropy2();
+	Vec3d calc_dt_entropy2();
 	Vec3d calc_t_entropy();
+	Vec3d calc_epi_point_entropy2();
 	void wipe_depth(const Vec3d& t);
 	void create_keyframe(Image* image);
 	void update_depth();

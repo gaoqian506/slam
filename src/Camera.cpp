@@ -6,12 +6,12 @@
 
 namespace ww {
 
-Camera::Camera() : radius(20) {
+Camera::Camera() : radius(20), movement(0) {
 
 	rotation[0] = 1;
 	rotation[4] = 1;
 	rotation[8] = 1;
-	
+
 	original = NULL;
 	gray = NULL;
 	gradient[0] = NULL;

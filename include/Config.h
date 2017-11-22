@@ -9,7 +9,7 @@ class Config {
 
 public:
 
-	enum Method { Lsd, Epipolar, Entropy };
+	enum Method { Lsd, Epipolar, Entropy, Entropy2 };
 
 	static int max_width;
 	static bool manually_content;

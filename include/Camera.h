@@ -30,6 +30,7 @@ public:
 	Vec3d epi_point;
 	Vec3d pos;
 	Vec9d rotation;
+	double movement;
 	double radius;
 	Intrinsic intrinsic;
 	

@@ -2,6 +2,7 @@
 #define __WW_VECTORS_HEADER__
 
 #include <memory.h>
+#include <math.h>
 
 namespace ww {
 
@@ -140,6 +141,12 @@ struct Vec3d {
 	}
 	
 	double length2() { return val[0]*val[0]+val[1]*val[1]+val[2]*val[2]; }
+
+	Vec3d& normalize() {
+	
+		return *this /= sqrt(length2());
+	}
+
 	double val[3];
 };
 
