@@ -52,7 +52,7 @@ private:
 	Vec3d calc_epi_dr();
 	Vec3d calc_dr_entropy();
 	Vec3d calc_dr_entropy2();
-	Vec3d calc_dt_entropy2();
+	double calc_dl_entropy2();
 	Vec3d calc_t_entropy();
 	Vec3d calc_epi_point_entropy2();
 	void wipe_depth(const Vec3d& t);

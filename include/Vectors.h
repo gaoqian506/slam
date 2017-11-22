@@ -139,6 +139,20 @@ struct Vec3d {
 		val[2] /= d;
 		return *this;
 	}
+
+	Vec3d& operator*=(double d) {
+	
+		val[0] *= d;
+		val[1] *= d;
+		val[2] *= d;
+		return *this;
+	}
+
+	Vec3d operator*(double d) {
+		Vec3d r(*this);
+		r *= d;
+		return r;
+	}
 	
 	double length2() { return val[0]*val[0]+val[1]*val[1]+val[2]*val[2]; }
 

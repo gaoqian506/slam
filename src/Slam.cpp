@@ -232,10 +232,17 @@ void Slam::func_manualy(int idx) {
 		}
 		break;
 	case 4:
-		if (m_frame) {
+		if (m_frame && Config::method == Config::Entropy2) {
+			m_frame->pos = m_frame->epi_point * m_frame->movement;
+			prepare_residual_entropy2(true);
+			m_frame->movement += calc_dl_entropy2();
+			m_frame->pos = m_frame->epi_point * m_frame->movement;
+		}
+		else if (m_frame) {
 			prepare_residual();
 			update_depth();
 		}
+
 		break;
 	}
 }
@@ -999,9 +1006,9 @@ Vec3d Slam::calc_dr_entropy2() {
 	);
 }
 
-Vec3d Slam::calc_dt_entropy2() {
+double Slam::calc_dl_entropy2() {
 
-	if (!m_key || !m_frame) { return Vec3d(); }
+	if (!m_key || !m_frame) { return 0; }
 
 	float* pDg = (float*)m_residual->data();
 	float* piu = (float*)m_key->gradient[0]->data();
