@@ -195,9 +195,17 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_epi();
 			m_frame->epi_point = calc_t_entropy();
 		}
-		if (m_frame && Config::method == Config::Entropy2) {
+		if (m_frame && Config::method == Config::Entropy2 || m_frame && Config::method == Config::Entropy3 || m_frame && Config::method == Config::Entropy4) {
 			prepare_residual_entropy2();
 			m_frame->epi_point = calc_epi_point_entropy2();
+		}
+		if (m_frame && Config::method == Config::Entropy5) {
+			prepare_residual_entropy2(true);
+			m_frame->pos += calc_dt_entropy5();
+		}
+		if (m_frame && Config::method == Config::Lsd2) {
+			prepare_residual_lsd2();
+			m_frame->pos += calc_dt_lsd2();
 		}
 		break;
 	case 2:
@@ -212,6 +220,22 @@ void Slam::func_manualy(int idx) {
 		if (m_frame && Config::method == Config::Entropy2) {
 			prepare_residual_entropy2();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy2());
+		}
+		if (m_frame && Config::method == Config::Entropy3) {
+			prepare_residual_entropy2();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy3());
+		}
+		if (m_frame && Config::method == Config::Entropy4) {
+			prepare_residual_entropy2();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy4());
+		}
+		if (m_frame && Config::method == Config::Entropy5) {
+			prepare_residual_entropy2(true);
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy4());
+		}
+		if (m_frame && Config::method == Config::Lsd2) {
+			prepare_residual_lsd2();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_lsd2());
 		}
 		break;
 	case 3:
@@ -229,6 +253,20 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_entropy2();
 			m_frame->epi_point = calc_epi_point_entropy2();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy2());
+		}
+		if (m_frame && Config::method == Config::Entropy3) {
+			prepare_residual_entropy2();
+			m_frame->epi_point = calc_epi_point_entropy2();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy3());
+		}
+		if (m_frame && Config::method == Config::Entropy5) {
+			prepare_residual_entropy2(true);
+			m_frame->pos += calc_dt_entropy5();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_entropy4());
+		}
+		if (m_frame && Config::method == Config::Lsd2) {
+			prepare_residual_lsd2();
+			update_depth();
 		}
 		break;
 	case 4:
@@ -677,6 +715,71 @@ void Slam::prepare_residual_entropy2(bool use_trans/* = false*/) {
 }
 
 
+void Slam::prepare_residual_lsd2() {
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	Vec3d m;
+	Vec4f x0, x1;
+	float* pfloat;
+
+	unsigned char* p_mask = (unsigned char*)m_mask->data();
+	float* p_gkey = (float*)m_key->gray->data();
+	float* p_gframe = (float*)m_frame->gray->data();
+	float* p_dg = (float*)m_residual->data();
+	float* pwarp = (float*)m_warp->data();
+	float* pd = (float*)m_key->depth->data();
+	Vec4f* px = (Vec4f*)m_key->points->data();
+
+	Intrinsic in0 = m_key->intrinsic;
+	Intrinsic in1 = m_frame->intrinsic;
+	double f1 = 1.0/in0.f;
+	Vec9d R = m_frame->rotation;
+	Vec3d t = m_frame->pos;
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width - in0.cx;
+		v = i / m_width - in0.cy;
+
+		x0[0] = u*f1;
+		x0[1] = v*f1;
+		x0[2] = 1;
+		x0[3] = pd[i];
+		px[i] = x0;
+
+		x1[0] = R[0]*x0[0]+R[1]*x0[1]+R[2]*x0[2]+t[0]*x0[3];
+		x1[1] = R[3]*x0[0]+R[4]*x0[1]+R[5]*x0[2]+t[1]*x0[3];
+		x1[2] = R[6]*x0[0]+R[7]*x0[1]+R[8]*x0[2]+t[2]*x0[3];
+		x1[3] = x0[3];
+		x1 /= x1[2];
+
+		m[0] = in1.f*x1[0]+in1.cx;
+		m[1] = in1.f*x1[1]+in1.cy;
+		
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			p_mask[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+			pfloat = p_gframe + v * m_width + u;
+			pwarp[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]);
+			p_dg[i] = p_gkey[i]-pwarp[i];
+		}
+		else { 
+			p_mask[i] = 0;
+			p_dg[i] = 0;
+			pwarp[i] = 0;
+		}
+	}
+}
+
+
+
 Vec3d Slam::calc_delta_t() {
 
 	if (!m_key || !m_frame) { return Vec3d(); }
@@ -1006,6 +1109,131 @@ Vec3d Slam::calc_dr_entropy2() {
 	);
 }
 
+Vec3d Slam::calc_dr_entropy3() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	float* pDg = (float*)m_residual->data();
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	int total = m_width * m_height;
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	
+	double l[3], le, x[3], b = 0;
+	Vec3d a;
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	double w, temp;
+	const Vec3d& ep = m_frame->epi_point;
+	int u, v;
+	x[2] = 1;
+
+	for (int i = 0; i < total; i++) {
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cx;
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+
+		l[0] = piu[i];
+		l[1] = piv[i];
+		l[2] = -(x[0]*piu[i]+x[1]*piv[i]);
+
+		le = l[0]*ep[0]+l[1]*ep[1]+l[2]*ep[2];
+
+		a[0] += le*f*(x[1]*l[2]-x[2]*l[1]);
+		a[1] += le*f*(x[2]*l[0]-x[0]*l[2]);
+		a[2] += le*f*(x[0]*l[1]-x[1]*l[0]);
+		
+		b += le*pDg[i];
+	}
+
+	double a2 = a[0]*a[0]+a[1]*a[1]+a[2]*a[2];
+	return a * (b/(a2+1));
+}
+
+
+Vec3d Slam::calc_dr_entropy4() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	float* pDg = (float*)m_residual->data();
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	int total = m_width * m_height;
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	
+	double l[3], x[3];
+	Vec3d a;
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	int u, v;
+	x[2] = 1;
+
+	for (int i = 0; i < total; i++) {
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cx;
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+
+		l[0] = piu[i];
+		l[1] = piv[i];
+		l[2] = -(x[0]*piu[i]+x[1]*piv[i]);
+
+		a[0] += pDg[i]*(x[1]*l[2]-x[2]*l[1]);
+		a[1] += pDg[i]*(x[2]*l[0]-x[0]*l[2]);
+		a[2] += pDg[i]*(x[0]*l[1]-x[1]*l[0]);
+
+	}
+
+	return a * (f1 / total * 10);
+}
+
+Vec3d Slam::calc_dr_lsd2() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	float* pDg = (float*)m_residual->data();
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	int total = m_width * m_height;
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	
+	double l[3], x[3], W = 0;
+	Vec3d a, r;
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	int u, v;
+	x[2] = 1;
+
+	for (int i = 0; i < total; i++) {
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cx;
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+
+		l[0] = f * piu[i];
+		l[1] = f * piv[i];
+		l[2] = -(u*piu[i]+v*piv[i]);
+
+		a[0] = pDg[i]*(x[1]*l[2]-x[2]*l[1]);
+		a[1] = pDg[i]*(x[2]*l[0]-x[0]*l[2]);
+		a[2] = pDg[i]*(x[0]*l[1]-x[1]*l[0]);
+
+		r += a;
+		W += a.length2();
+	}
+
+	return r /= W ;
+
+}
+
+
 double Slam::calc_dl_entropy2() {
 
 	if (!m_key || !m_frame) { return 0; }
@@ -1113,6 +1341,75 @@ Vec3d Slam::calc_epi_point_entropy2() {
 	}
 	ep.normalize();
 	return ep;
+}
+
+Vec3d Slam::calc_dt_entropy5() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	int total = m_width * m_height;
+	int u, v, count = 0;
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+
+	float* pdg = (float*)m_residual->data();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	double w;
+	Vec3d a;
+	
+	for (int i = 0; i < total; i++) {
+
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+
+		count++;
+		w = pdg[i];
+		a[0] += w * piu[i];
+		a[1] += w * piv[i];
+		a[2] -= w * (u*f1*piu[i]+v*f1*piv[i]);
+	}
+
+	return a /= count;
+}
+
+Vec3d Slam::calc_dt_lsd2() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	int total = m_width * m_height;
+	int u, v, count = 0;
+	double f = m_key->intrinsic.f;
+	//double f1 = 1.0 / f;
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pdg = (float*)m_residual->data();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+
+	double W = 0;
+	Vec3d a, X;
+	
+	for (int i = 0; i < total; i++) {
+
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+		count++;
+		a[0] = pdg[i] * pd[i] * f * piu[i];
+		a[1] = pdg[i] * pd[i] * f * piv[i];
+		a[2] = -pdg[i] * pd[i] * (u*piu[i]+v*piv[i]);
+
+		X += a;
+
+		W += a.length2();
+	}
+
+	return X /= W;
 }
 
 void Slam::wipe_depth(const Vec3d& t) {
@@ -1237,6 +1534,35 @@ void Slam::update_depth() {
 	}
 }
 
+void Slam::update_depth_lsd2() {
+
+	if (!m_key || !m_frame) { return; }
+
+	int total = m_width * m_height;
+	int u, v;
+	double f = m_key->intrinsic.f;
+	//double f1 = 1.0 / f;
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pdg = (float*)m_residual->data();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	double a, l[3], W = 0;
+	const Vec3d& t = m_frame->pos;
+	
+	for (int i = 0; i < total; i++) {
+
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+		l[0] = f * piu[i];
+		l[1] = f * piv[i];
+		l[2] = -(u*piu[i]+v*piv[i]);
+		a = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
+		pd[i] += pdg[i]/(a+f);
+	}
+}
 
 } // namespace
 

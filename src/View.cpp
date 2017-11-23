@@ -427,7 +427,7 @@ void View::draw_mesh() {
 	std::cout << "View::draw_mesh" << std::endl;
 }
 
-void View::draw_camera_instance(Camera* camera, bool with_points /*=with_points*/) {
+void View::draw_camera_instance(Camera* camera, bool with_points /*=true*/) {
 
 	std::cout << "View::draw_camera_instance" << std::endl;
 	if (!camera->gray) { return; }
