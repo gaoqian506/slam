@@ -32,6 +32,8 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_iuux = NULL;
 	m_debug_image = NULL;
 	m_epi_line = NULL;
+	m_warp = NULL;
+	m_weight = NULL;
 
 	m_pixel_info[0] = 0;
 	
@@ -115,20 +117,24 @@ Image* Slam::get_debug_image(const int& idx) {
 		m_image_name = "residual";
 	}
 	else if (idx == 4) {
-		which = m_key ? m_key->gradient[0] : NULL;
-		m_image_name = "key gradient x";
+		which = m_weight;
+		m_image_name = "weight";
 	}
 	else if (idx == 5) {
-		which = m_key ? m_key->gradient[1] : NULL;
-		m_image_name = "key gradient y";
+		which = m_key ? m_key->depth : NULL;
+		m_image_name = "key depth";
 	}
 	else if (idx == 6) {
 		which = m_mask;
 		m_image_name = "mask";
 	}
 	else if (idx == 7) {
-		which = m_key ? m_key->depth : NULL;
-		m_image_name = "key depth";
+		which = m_key ? m_key->gradient[0] : NULL;
+		m_image_name = "key gradient x";
+	}
+	else if (idx == 8) {
+		which = m_key ? m_key->gradient[1] : NULL;
+		m_image_name = "key gradient y";
 	}
 	else {
 		which = NULL;
@@ -341,7 +347,8 @@ char* Slam::pixel_info(const Vec2d& u) {
 		"image size: %d, %d\n"
 		"active: %s\n"
 		"pos:%f, %f\n"
-		"key:%f cur:%f res:%f mask:%d\n"
+		"key:%f cur:%f\n"
+		"res:%f weight:%f mask:%d\n"
 		"grad: %f, %f\n"
 		"epi line: %f, %f, %f\n"
 		"depth: %f\n"
@@ -356,6 +363,7 @@ char* Slam::pixel_info(const Vec2d& u) {
 		m_key ? *((float*)m_key->gray->at(idx)) : 0.0,
 		m_frame ? *((float*)m_frame->gray->at(idx)) : 0.0,
 		m_residual ? *((float*)m_residual->at(idx)) : 0,
+		m_weight ? *((float*)m_weight->at(idx)) : 0,
 		m_mask ? *((unsigned char*)m_mask->at(idx)) : 0,
 		m_key ? ((float*)m_key->gradient[0]->at(idx))[0] : 0,
 		m_key ? ((float*)m_key->gradient[1]->at(idx))[0] : 0,
@@ -403,6 +411,7 @@ void Slam::initialize(Image* image) {
 	//m_iuux = new CvImage(w, h, Image::Float32, 3);
 	m_epi_line = new CvImage(w, h, Image::Float32, 3);
 	m_warp = new CvImage(w, h, Image::Float32);
+	m_weight = new CvImage(w, h, Image::Float32);
 }
 
 void Slam::push(Image* image) {
@@ -837,6 +846,7 @@ void Slam::prepare_residual_lsd3() {
 	float* p_gframe = (float*)m_frame->gray->data();
 	float* p_dg = (float*)m_residual->data();
 	float* pwarp = (float*)m_warp->data();
+	float* pw = (float*)m_weight->data();
 	float* pd = (float*)m_key->depth->data();
 	Vec4f* px = (Vec4f*)m_key->points->data();
 
@@ -885,11 +895,13 @@ void Slam::prepare_residual_lsd3() {
 			pfloat = p_gframe + v * m_width + u;
 			pwarp[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]);
 			p_dg[i] = pwarp[i] - p_gkey[i];
+			pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
 		}
 		else { 
 			p_mask[i] = 0;
 			p_dg[i] = 0;
 			pwarp[i] = 0;
+			pw[i] = 0;
 		}
 	}
 }
@@ -1358,8 +1370,9 @@ Vec3d Slam::calc_dr_lsd3() {
 	float* piv = (float*)m_key->gradient[1]->data();
 	int total = m_width * m_height;
 	unsigned char* pMask = (unsigned char*)m_mask->data();
+	float* pw = (float*)m_weight->data();
 	
-	double a[3], l[3], x[3], A[9], B[3], w;
+	double a[3], l[3], x[3], A[9], B[3], w, dg;
 	double f = m_key->intrinsic.f;
 	double f1 = 1.0 / f;
 	int u, v;
@@ -1372,7 +1385,9 @@ Vec3d Slam::calc_dr_lsd3() {
 
 		u = i % m_width - m_frame->intrinsic.cx;
 		v = i / m_width - m_frame->intrinsic.cx;
-		w = 1;
+		dg = pdg[i];
+		w = pw[i];
+
 		x[0] = f1 * u;
 		x[1] = f1 * v;
 
@@ -1391,9 +1406,9 @@ Vec3d Slam::calc_dr_lsd3() {
 		A[5] += w*a[1]*a[2];
 		A[8] += w*a[2]*a[2];
 		
-		B[0] += w*a[0]*pdg[i];
-		B[1] += w*a[1]*pdg[i];
-		B[2] += w*a[2]*pdg[i];
+		B[0] += w*a[0]*dg;
+		B[1] += w*a[1]*dg;
+		B[2] += w*a[2]*dg;
 	}
 	
 	A[3] = A[1];
@@ -1605,9 +1620,10 @@ Vec3d Slam::calc_dt_lsd3() {
 	float* piv = (float*)m_key->gradient[1]->data();
 	float* pd = (float*)m_key->depth->data();
 	float* pdg = (float*)m_residual->data();
+	float* pw = (float*)m_weight->data();
 	unsigned char* pMask = (unsigned char*)m_mask->data();
 
-	double w, A[9], B[3];
+	double w, A[9], B[3], dg;
 	Vec3d a;
 	memset(A, 0, sizeof(A));
 	memset(B, 0, sizeof(B));
@@ -1618,7 +1634,8 @@ Vec3d Slam::calc_dt_lsd3() {
 
 		u = i % m_width - m_frame->intrinsic.cx;
 		v = i / m_width - m_frame->intrinsic.cy;
-		w = 1;
+		dg = pdg[i];
+		w = pw[i];
 		a[0] = pd[i] * f * piu[i];
 		a[1] = pd[i] * f * piv[i];
 		a[2] = -pd[i] * (u*piu[i]+v*piv[i]);
@@ -1630,9 +1647,9 @@ Vec3d Slam::calc_dt_lsd3() {
 		A[5] += w*a[1]*a[2];
 		A[8] += w*a[2]*a[2];
 		
-		B[0] += w*a[0]*pdg[i];
-		B[1] += w*a[1]*pdg[i];
-		B[2] += w*a[2]*pdg[i];
+		B[0] += w*a[0]*dg;
+		B[1] += w*a[1]*dg;
+		B[2] += w*a[2]*dg;
 	}
 	
 	A[3] = A[1];

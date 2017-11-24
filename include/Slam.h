@@ -87,6 +87,7 @@ private:
 	Image* m_debug_image;
 	Image* m_epi_line;
 	Image* m_warp;
+	Image* m_weight;
 	bool m_changed;
 	char m_pixel_info[MAX_PIXEL_INFO];
 	int m_width;

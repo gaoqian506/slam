@@ -238,16 +238,13 @@ void View::special(int key,int x,int y) {
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_LEFT:
-	case GLUT_KEY_RIGHT:
-		if (m_display_aspect == DisplaySpace) {
-			m_display_aspect = DisplayImage;
-		}
-		else {
-			m_display_aspect = DisplaySpace;
-		}
+		m_trans_2d[0] *= 0.8;
 		glutPostRedisplay();
-		break;
-	}
+		break; 
+	case GLUT_KEY_RIGHT:
+		m_trans_2d[0] *= 1.25;
+		glutPostRedisplay();
+		break;	}
 }
 
 void View::mouse(int button, int state, int x, int y) {
