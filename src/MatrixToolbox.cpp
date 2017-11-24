@@ -5,7 +5,7 @@
 namespace ww {
 
 
-Vec9d MatrixToolbox::inv_matrix_3x3(Vec9d& from) {
+Vec9d MatrixToolbox::inv_matrix_3x3(Vec9d from) {
 /*
 	from = 0;
 	from[0] = 500;

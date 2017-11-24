@@ -30,6 +30,9 @@ public:
 
 		Lsd2,	 	// E(dt) = dot(It, dt)-dg
 					// E(dr) = dot(Ir, dr)-dg
+
+		Lsd3,	 	// E(dt) = (dot(It, dt)-dg)^2
+					// E(dr) = (dot(Ir, dr)-dg)^2
 	};
 
 	static int max_width;

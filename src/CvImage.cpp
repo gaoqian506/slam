@@ -132,7 +132,7 @@ void CvImage::resize(Image*& out) {
 	
 		int th = (int)(((double)Config::max_width)/w*h);
 	
-	cv::resize(m_cv_mat, cv_out->cv_mat(), cv::Size(Config::max_width, th));
+	cv::resize(m_cv_mat, cv_out->cv_mat(), cv::Size(Config::max_width, th), 0, 0, CV_INTER_CUBIC);
 	}
 	else {
 		copy_to(out);

@@ -169,6 +169,10 @@ struct Vec9d {
 	Vec9d() {
 		memset(val, 0, sizeof(val));
 	}
+
+	Vec9d(double* p) {
+		memcpy(val, p, sizeof(val));
+	}
 	
 	double& operator[](int idx) {
 		return val[idx];

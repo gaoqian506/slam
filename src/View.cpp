@@ -4,6 +4,7 @@
 #include "GlToolbox.h"
 #include "SpaceToolbox.h"
 #include "MatrixToolbox.h"
+#include "Config.h"
 #include <GL/glut.h>
 #include <iostream>
 #include <vector>
@@ -75,6 +76,7 @@ View::View(ViewContent* vc) {
 	glutMouseFunc(g_mouse_func);
 	glutMotionFunc(g_mouse_move_func);
 	glutPassiveMotionFunc(g_passive_mouse_move_func);
+	glClearColor(0.233, 0.156, 0.343, 1);
 
 	
 	g_host = this;
@@ -84,6 +86,7 @@ View::View(ViewContent* vc) {
 
 	glGenTextures(1, &m_gl_texture);
 	m_current_image = 0;
+	m_point_size = 1;
 	MatrixToolbox::identity(m_view_matrix);
 
 
@@ -123,9 +126,13 @@ void View::display() {
 	switch (m_display_aspect) {
 	case DisplaySpace:
 		draw_content();
+		glColor3d(0.35, 0.92, 0.72);
+		print_text(m_content->pixel_info(m_pixel_pos), 5, 15);
 		break;
 	case DisplayImage:
+		glColor3d(0.72, 0.38, 0.49);
 		draw_image(m_content->get_debug_image(m_display_index));
+		glColor3d(0.35, 0.92, 0.72);
 		print_text(m_content->pixel_info(m_pixel_pos), 5, 15);
 		break;
 	}
@@ -145,7 +152,16 @@ void View::keyboard(unsigned char key,int x,int y) {
 		glutPostRedisplay();
 		break;
 	case 49:	// '1'
+	case 50:	// '2'
+	case 51:	// '3'
+	case 52:	// '4'
+	case 53:	// '5'
+	case 54:	// '6'
+	case 55:	// '7'
+	case 56:	// '8'
+	case 57:	// '9'
 		m_display_aspect = DisplayImage;
+		m_display_index = key - 49;
 		glutPostRedisplay();
 		break;
 	case 'w':	// move forward
@@ -164,6 +180,9 @@ void View::keyboard(unsigned char key,int x,int y) {
 	case 'd':	// move backward
 		SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
 		glutPostRedisplay();
+		break;
+	case 32:	// space
+		MatrixToolbox::identity(m_view_matrix);
 		break;
 	}
 }
@@ -191,12 +210,41 @@ void View::special(int key,int x,int y) {
 		m_content->func_manualy(4);
 		glutPostRedisplay();
 		break;
+	case GLUT_KEY_F6:
+		m_content->func_manualy(5);
+		glutPostRedisplay();
+		break;
+	case GLUT_KEY_F10:
+		m_content->func_manualy(9);
+		glutPostRedisplay();
+		break;
 	case GLUT_KEY_UP:
-		m_display_index++;
+		if (m_display_aspect == DisplaySpace) {
+			m_point_size ++;
+		}
+		else {
+			m_display_index++;
+		}
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_DOWN:
-		m_display_index = m_display_index ? m_display_index-1 : 0;
+		if (m_display_aspect == DisplaySpace) {
+			m_point_size--;
+			if (m_point_size < 1) { m_point_size = 1; }
+		}
+		else {
+			m_display_index = m_display_index ? m_display_index-1 : 0;
+		}
+		glutPostRedisplay();
+		break;
+	case GLUT_KEY_LEFT:
+	case GLUT_KEY_RIGHT:
+		if (m_display_aspect == DisplaySpace) {
+			m_display_aspect = DisplayImage;
+		}
+		else {
+			m_display_aspect = DisplaySpace;
+		}
 		glutPostRedisplay();
 		break;
 	}
@@ -204,6 +252,7 @@ void View::special(int key,int x,int y) {
 
 void View::mouse(int button, int state, int x, int y) {
 
+	double dist = 0.05;
 
 	switch(button) {
 
@@ -211,11 +260,17 @@ void View::mouse(int button, int state, int x, int y) {
 
 		break;
 	case 3:
-		m_trans_2d[0] *= 1.25;
+		if (m_display_aspect == DisplaySpace) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
+		}
+		else { m_trans_2d[0] *= 1.25; }
 		glutPostRedisplay();
 		break;
 	case 4:
-		m_trans_2d[0] *= 0.8;
+		if (m_display_aspect == DisplaySpace) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
+		}
+		else { m_trans_2d[0] *= 0.8; }
 		glutPostRedisplay();
 		break;
 	}
@@ -232,6 +287,7 @@ void View::mouse_move(int x, int y) {
 	if (m_display_aspect == DisplaySpace && abs(dx) < 20 && abs(dy) < 20) {
 		Vec9d dR = SpaceToolbox::make_rotation(-dy*m_vpp, dx*m_vpp);
 		SpaceToolbox::rotate(m_view_matrix, dR);
+		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -0.02));
 		glutPostRedisplay();
 	}
 
@@ -431,7 +487,13 @@ void View::draw_camera_instance(Camera* camera, bool with_points /*=true*/) {
 
 	std::cout << "View::draw_camera_instance" << std::endl;
 	if (!camera->gray) { return; }
-	GlToolbox::transform_to(camera->pos, camera->rotation, true);
+	if (Config::method = Config::Lsd3) {
+		GlToolbox::transform_to(camera->pos, camera->rotation, false);
+	}
+	else {
+		GlToolbox::transform_to(camera->pos, camera->rotation, true);
+	}
+
 	
 	int width = camera->gray->width();
 	int height = camera->gray->height();
@@ -458,10 +520,14 @@ void View::draw_camera_instance(Camera* camera, bool with_points /*=true*/) {
 	glEnd();
 	
 	if (with_points && camera->points) {
+		glPointSize(m_point_size);
 		glEnableClientState(GL_VERTEX_ARRAY);
+		glEnableClientState(GL_COLOR_ARRAY);
 		glVertexPointer(4, GL_FLOAT, 0, camera->points->data());
+		glColorPointer(3, GL_UNSIGNED_BYTE, 0, camera->original->data());
 		glDrawArrays(GL_POINTS, 0, width*height);
 		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_COLOR_ARRAY);
 	}
 
 }

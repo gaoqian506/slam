@@ -66,6 +66,7 @@ private:
 	int m_mouse_pos[2];
 	double m_vpp; //view per pixel in radian
 	Vec16d m_view_matrix;
+	int m_point_size;
 	
 
 
