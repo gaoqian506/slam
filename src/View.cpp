@@ -172,12 +172,11 @@ void View::keyboard(unsigned char key,int x,int y) {
 		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
 		glutPostRedisplay();
 		break;
-	case 'a':	// move forward
-		SpaceToolbox::translate(m_view_matrix,
- Vec3d(dist, 0, 0));
+	case 'a':	// move left
+		SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
 		glutPostRedisplay();
 		break;
-	case 'd':	// move backward
+	case 'd':	// move right
 		SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
 		glutPostRedisplay();
 		break;
@@ -189,6 +188,7 @@ void View::keyboard(unsigned char key,int x,int y) {
 
 void View::special(int key,int x,int y) {
 
+	double dist = 0.1;
 	switch(key) {
 	case GLUT_KEY_F1:
 		m_content->push_manauly();
@@ -238,11 +238,21 @@ void View::special(int key,int x,int y) {
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_LEFT:
-		m_trans_2d[0] *= 0.8;
+		if (m_display_aspect == DisplaySpace) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
+		}
+		else {
+			m_trans_2d[0] *= 0.8;
+		}
 		glutPostRedisplay();
 		break; 
 	case GLUT_KEY_RIGHT:
-		m_trans_2d[0] *= 1.25;
+		if (m_display_aspect == DisplaySpace) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
+		}
+		else {
+			m_trans_2d[0] *= 1.25;
+		}
 		glutPostRedisplay();
 		break;	}
 }

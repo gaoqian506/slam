@@ -916,7 +916,7 @@ void Slam::prepare_residual_lsd3() {
 			pfloat = p_gframe + v * m_width + u;
 			pwarp[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]);
 			p_dg[i] = pwarp[i] - p_gkey[i];
-			pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+			pw[i] = exp(-p_dg[i]*p_dg[i]/0.25);
 		}
 		else { 
 			p_mask[i] = 0;
