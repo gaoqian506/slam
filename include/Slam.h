@@ -48,6 +48,8 @@ private:
 	void prepare_residual_entropy2(bool use_trans = false);
 	void prepare_residual_lsd2();
 	void prepare_residual_lsd3();
+	void prepare_residual_lsd4();
+	void prepare_residual_epi2(bool with_trans = false);
 	Vec3d calc_delta_t();
 	Vec3d calc_delta_r();
 	Vec3d calc_epi_point();
@@ -58,12 +60,16 @@ private:
 	Vec3d calc_dr_entropy4();
 	Vec3d calc_dr_lsd2();
 	Vec3d calc_dr_lsd3();
+	Vec3d calc_dr_lsd4();
+	Vec3d calc_dr_epi2();
 	double calc_dl_entropy2();
 	Vec3d calc_t_entropy();
 	Vec3d calc_epi_point_entropy2();
 	Vec3d calc_dt_entropy5();
 	Vec3d calc_dt_lsd2();
 	Vec3d calc_dt_lsd3();
+	Vec3d calc_dt_lsd4();
+	Vec3d calc_e_epi2();
 	void wipe_depth(const Vec3d& t);
 	void create_keyframe(Image* image);
 	void update_depth();

@@ -217,6 +217,14 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_lsd3();
 			m_frame->pos += calc_dt_lsd3();
 		}
+		if (m_frame && Config::method == Config::Epi2) {
+			prepare_residual_epi2();
+			m_frame->epi_point = calc_e_epi2();
+		}
+		if (m_frame && Config::method == Config::Lsd4) {
+			prepare_residual_lsd4();
+			m_frame->pos += calc_dt_lsd4();
+		}
 		break;
 	case 2:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -250,6 +258,14 @@ void Slam::func_manualy(int idx) {
 		if (m_frame && Config::method == Config::Lsd3) {
 			prepare_residual_lsd3();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_lsd3());
+		}
+		if (m_frame && Config::method == Config::Epi2) {
+			prepare_residual_epi2();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_epi2());
+		}
+		if (m_frame && Config::method == Config::Lsd4) {
+			prepare_residual_lsd4();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_lsd4());
 		}
 		break;
 	case 3:
@@ -287,6 +303,11 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_lsd3();
 			m_frame->pos += calc_dt_lsd3();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_lsd3());
+		}
+		if (m_frame && Config::method == Config::Lsd4) {
+			prepare_residual_lsd4();
+			m_frame->pos += calc_dt_lsd4();
+			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_lsd4());
 		}
 		break;
 	case 4:
@@ -907,6 +928,163 @@ void Slam::prepare_residual_lsd3() {
 }
 
 
+void Slam::prepare_residual_lsd4() {
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	Vec3d m;
+	Vec4f x0, x1;
+	float* pfloat;
+
+	unsigned char* p_mask = (unsigned char*)m_mask->data();
+	float* p_gkey = (float*)m_key->gray->data();
+	float* p_gframe = (float*)m_frame->gray->data();
+	float* p_dg = (float*)m_residual->data();
+	float* pwarp = (float*)m_warp->data();
+	float* pw = (float*)m_weight->data();
+	float* pd = (float*)m_key->depth->data();
+	Vec4f* px = (Vec4f*)m_key->points->data();
+
+	Intrinsic in0 = m_key->intrinsic;
+	Intrinsic in1 = m_frame->intrinsic;
+	double f1 = 1.0/in0.f;
+	Vec9d R = m_frame->rotation;
+	Vec3d t = m_frame->pos;
+
+	Vec9d iR = MatrixToolbox::transpose_3x3(R);
+	double it[3] = {
+		-(iR[0]*t[0]+iR[1]*t[1]+iR[2]*t[2]),
+		-(iR[3]*t[0]+iR[4]*t[1]+iR[5]*t[2]),
+		-(iR[6]*t[0]+iR[7]*t[1]+iR[8]*t[2]),
+	};
+	R = iR;
+	t = it;
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width - in0.cx;
+		v = i / m_width - in0.cy;
+
+		x0[0] = u*f1;
+		x0[1] = v*f1;
+		x0[2] = 1;
+		x0[3] = pd[i];
+		px[i] = x0;
+
+		x1[0] = R[0]*x0[0]+R[1]*x0[1]+R[2]*x0[2]+t[0]*x0[3];
+		x1[1] = R[3]*x0[0]+R[4]*x0[1]+R[5]*x0[2]+t[1]*x0[3];
+		x1[2] = R[6]*x0[0]+R[7]*x0[1]+R[8]*x0[2]+t[2]*x0[3];
+		x1[3] = x0[3];
+		x1 /= x1[2];
+
+		m[0] = in1.f*x1[0]+in1.cx;
+		m[1] = in1.f*x1[1]+in1.cy;
+		
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			p_mask[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+			pfloat = p_gframe + v * m_width + u;
+			pwarp[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]);
+			p_dg[i] = pwarp[i] - p_gkey[i];
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			p_mask[i] = 0;
+			p_dg[i] = 0;
+			pwarp[i] = 0;
+			pw[i] = 0;
+		}
+	}
+}
+
+void Slam::prepare_residual_epi2(bool with_trans/* = false*/) {
+
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	Vec3d m;
+	Vec4f x0, x1;
+	float* pfloat;
+
+	unsigned char* p_mask = (unsigned char*)m_mask->data();
+	float* p_gkey = (float*)m_key->gray->data();
+	float* p_gframe = (float*)m_frame->gray->data();
+	float* p_dg = (float*)m_residual->data();
+	float* pwarp = (float*)m_warp->data();
+	float* pw = (float*)m_weight->data();
+	float* pd = (float*)m_key->depth->data();
+	Vec4f* px = (Vec4f*)m_key->points->data();
+
+	Intrinsic in0 = m_key->intrinsic;
+	Intrinsic in1 = m_frame->intrinsic;
+	double f1 = 1.0/in0.f;
+	Vec9d R = m_frame->rotation;
+	Vec3d t = m_frame->pos;
+
+	Vec9d iR = MatrixToolbox::transpose_3x3(R);
+	double it[3] = {
+		-(iR[0]*t[0]+iR[1]*t[1]+iR[2]*t[2]),
+		-(iR[3]*t[0]+iR[4]*t[1]+iR[5]*t[2]),
+		-(iR[6]*t[0]+iR[7]*t[1]+iR[8]*t[2]),
+	};
+	R = iR;
+	t = it;
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width - in0.cx;
+		v = i / m_width - in0.cy;
+
+		x0[0] = u*f1;
+		x0[1] = v*f1;
+		x0[2] = 1;
+		x0[3] = pd[i];
+		px[i] = x0;
+
+		x1[0] = R[0]*x0[0]+R[1]*x0[1]+R[2]*x0[2];
+		x1[1] = R[3]*x0[0]+R[4]*x0[1]+R[5]*x0[2];
+		x1[2] = R[6]*x0[0]+R[7]*x0[1]+R[8]*x0[2];
+		if (with_trans) {
+			x1[0] += t[0]*x0[3];
+			x1[1] += t[1]*x0[3];
+			x1[2] += t[2]*x0[3];
+		}
+		x1[3] = x0[3];
+		x1 /= x1[2];
+
+		m[0] = in1.f*x1[0]+in1.cx;
+		m[1] = in1.f*x1[1]+in1.cy;
+		
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			p_mask[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+			pfloat = p_gframe + v * m_width + u;
+			pwarp[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]);
+			p_dg[i] = pwarp[i] - p_gkey[i];
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			p_mask[i] = 0;
+			p_dg[i] = 0;
+			pwarp[i] = 0;
+			pw[i] = 0;
+		}
+	}
+
+}
+
 Vec3d Slam::calc_delta_t() {
 
 	if (!m_key || !m_frame) { return Vec3d(); }
@@ -1428,6 +1606,149 @@ Vec3d Slam::calc_dr_lsd3() {
 
 }
 
+Vec3d Slam::calc_dr_lsd4() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	float* pdg = (float*)m_residual->data();
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	int total = m_width * m_height;
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	float* pw = (float*)m_weight->data();
+	
+	double a[3], l[3], x[3], A[9], B[3], w, dg;
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	int u, v;
+	x[2] = 1;
+	memset(A, 0, sizeof(A));
+	memset(B, 0, sizeof(B));
+	const Vec3d& t = m_frame->pos;
+
+	for (int i = 0; i < total; i++) {
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cx;
+		dg = pdg[i];
+		//w = pw[i];
+
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+
+		l[0] = f * piu[i];
+		l[1] = f * piv[i];
+		l[2] = -(u*piu[i]+v*piv[i]);
+
+		a[0] = x[1]*l[2]-x[2]*l[1];
+		a[1] = x[2]*l[0]-x[0]*l[2];
+		a[2] = x[0]*l[1]-x[1]*l[0];
+		w = a[0]*t[0]+a[1]*t[1]+a[2]*t[2];
+		w *= w;
+		pw[i] = w;
+
+		A[0] += w*a[0]*a[0];
+		A[1] += w*a[0]*a[1];
+		A[2] += w*a[0]*a[2];
+		A[4] += w*a[1]*a[1];
+		A[5] += w*a[1]*a[2];
+		A[8] += w*a[2]*a[2];
+		
+		B[0] += w*a[0]*dg;
+		B[1] += w*a[1]*dg;
+		B[2] += w*a[2]*dg;
+	}
+	
+	A[3] = A[1];
+	A[6] = A[2];
+	A[7] = A[5];
+
+	A[0] += 1;
+	A[4] += 1;
+	A[8] += 1;
+	
+	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
+	return Vec3d(
+		invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2],
+		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
+		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
+	);
+
+}
+
+Vec3d Slam::calc_dr_epi2() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	float* pdg = (float*)m_residual->data();
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	int total = m_width * m_height;
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	float* pw = (float*)m_weight->data();
+	
+	double a[3], l[3], x[3], A[9], B[3], w, dg;
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	int u, v;
+	x[2] = 1;
+	memset(A, 0, sizeof(A));
+	memset(B, 0, sizeof(B));
+	const Vec3d& e = m_frame->epi_point;
+
+	for (int i = 0; i < total; i++) {
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cx;
+		dg = pdg[i];
+
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+
+		l[0] = f * piu[i];
+		l[1] = f * piv[i];
+		l[2] = -(u*piu[i]+v*piv[i]);
+
+		w = dg*(l[0]*e[0]+l[1]*e[1]+l[2]*e[2]);
+		w = exp(-w*f1*5);
+		pw[i] = w;
+		//w = 1;
+
+		a[0] = x[1]*l[2]-x[2]*l[1];
+		a[1] = x[2]*l[0]-x[0]*l[2];
+		a[2] = x[0]*l[1]-x[1]*l[0];
+
+		A[0] += w*a[0]*a[0];
+		A[1] += w*a[0]*a[1];
+		A[2] += w*a[0]*a[2];
+		A[4] += w*a[1]*a[1];
+		A[5] += w*a[1]*a[2];
+		A[8] += w*a[2]*a[2];
+		
+		B[0] += w*a[0]*dg;
+		B[1] += w*a[1]*dg;
+		B[2] += w*a[2]*dg;
+	}
+	
+	A[3] = A[1];
+	A[6] = A[2];
+	A[7] = A[5];
+
+	A[0] += 1;
+	A[4] += 1;
+	A[8] += 1;
+	
+	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
+	return Vec3d(
+		invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2],
+		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
+		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
+	);
+
+}
+
 
 double Slam::calc_dl_entropy2() {
 
@@ -1666,6 +1987,109 @@ Vec3d Slam::calc_dt_lsd3() {
 		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
 		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
 	);
+
+}
+
+
+Vec3d Slam::calc_dt_lsd4() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	int total = m_width * m_height;
+	int u, v, count = 0;
+	double f = m_key->intrinsic.f;
+	//double f1 = 1.0 / f;
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pdg = (float*)m_residual->data();
+	float* pw = (float*)m_weight->data();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+
+	double w, A[9], B[3], dg;
+	Vec3d a;
+	memset(A, 0, sizeof(A));
+	memset(B, 0, sizeof(B));
+	Vec3d t = m_frame->pos;
+
+	if (t.length2() < 0.001) { t[0] = 1; t[1] = 1; }
+	
+	for (int i = 0; i < total; i++) {
+
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+		dg = pdg[i];
+		//w = 1;
+		a[0] = pd[i] * f * piu[i];
+		a[1] = pd[i] * f * piv[i];
+		a[2] = -pd[i] * (u*piu[i]+v*piv[i]);
+		w = a[0]*t[0]+a[1]*t[1]+a[2]*t[2];
+		w *= w;
+		pw[i] = w;
+
+		A[0] += w*a[0]*a[0];
+		A[1] += w*a[0]*a[1];
+		A[2] += w*a[0]*a[2];
+		A[4] += w*a[1]*a[1];
+		A[5] += w*a[1]*a[2];
+		A[8] += w*a[2]*a[2];
+		
+		B[0] += w*a[0]*dg;
+		B[1] += w*a[1]*dg;
+		B[2] += w*a[2]*dg;
+	}
+	
+	A[3] = A[1];
+	A[6] = A[2];
+	A[7] = A[5];
+
+	A[0] += 1;
+	A[4] += 1;
+	A[8] += 1;
+	
+	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
+	return Vec3d(
+		invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2],
+		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
+		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
+	);
+
+}
+
+
+Vec3d Slam::calc_e_epi2() {
+
+	if (!m_key || !m_frame) { return Vec3d(); }
+
+	int total = m_width * m_height;
+	int u, v;//, count = 0;
+	//double f = m_key->intrinsic.f;
+	double f1 = 1.0 / m_key->intrinsic.f;
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	float* pdg = (float*)m_residual->data();
+	unsigned char* pMask = (unsigned char*)m_mask->data();
+	double w;
+	Vec3d ep;
+	
+	
+	for (int i = 0; i < total; i++) {
+
+		if (!pMask[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+
+		//count++;
+		w = pdg[i];
+		ep[0] += w * piu[i];
+		ep[1] += w * piv[i];
+		ep[2] -= w * (u*f1*piu[i]+v*f1*piv[i]);
+	}
+	ep.normalize();
+	return ep;
 
 }
 

@@ -33,6 +33,13 @@ public:
 
 		Lsd3,	 	// E(dt) = (dot(It, dt)-dg)^2
 					// E(dr) = (dot(Ir, dr)-dg)^2
+
+		Epi2,		// e = dot(dgl, e)
+					// E(dr) = w(dot(Ir, dr)-dg)^2
+					// w = exp(-dot(l,e)/sigma)
+		Lsd4,	 	// E(dt) = (dot(It, dt)-dg)^2
+					// E(dr) = w(dot(Ir, dr)-dg)^2
+					// w = dot(Ir,t);		
 	};
 
 	static int max_width;
