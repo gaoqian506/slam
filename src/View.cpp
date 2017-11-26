@@ -132,6 +132,8 @@ void View::display() {
 	case DisplayImage:
 		glColor3d(0.72, 0.38, 0.49);
 		draw_image(m_content->get_debug_image(m_display_index));
+		glColor3d(0.92, 0.56, 0.37);
+		draw_optical_flow(m_content->get_optical_flow());
 		glColor3d(0.35, 0.92, 0.72);
 		print_text(m_content->pixel_info(m_pixel_pos), 5, 15);
 		break;
@@ -387,13 +389,13 @@ void View::draw_image(Image* image) {
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	glColor3d(0.233, 0.753, 0.777);
-	glBegin(GL_LINE_LOOP);
-	glVertex2d(-w/2, -h/2);
-	glVertex2d(-w/2, +h/2);
-	glVertex2d(+w/2, +h/2);
-	glVertex2d(+w/2, -h/2);
-	glEnd();
+	// glColor3d(0.233, 0.753, 0.777);
+	// glBegin(GL_LINE_LOOP);
+	// glVertex2d(-w/2, -h/2);
+	// glVertex2d(-w/2, +h/2);
+	// glVertex2d(+w/2, +h/2);
+	// glVertex2d(+w/2, -h/2);
+	// glEnd();
 
 	m_current_image = image;
 
@@ -536,6 +538,45 @@ void View::draw_camera_instance(Camera* camera, bool with_points /*=true*/) {
 		glDisableClientState(GL_VERTEX_ARRAY);
 		glDisableClientState(GL_COLOR_ARRAY);
 	}
+
+}
+
+void View::draw_optical_flow(Image* of) {
+
+
+	if(!of) { return; }
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	
+	GlToolbox::orthogonal_pixel(GlToolbox::Center);
+	glScaled(m_trans_2d[0], m_trans_2d[0], 1);
+	int w = of->width();
+	int h = of->height();
+
+	int skip = Config::of_skip, id;
+	Vec2f mv;
+	double m[2] = { -w*0.5+0.5, -h*0.5+0.5 };
+
+	for (int u = 0; u < w; u+=skip) {
+
+		for (int v = 0; v < h; v+=skip) {
+			mv = ((Vec2f*)of->data())[v*w+u];
+			glBegin(GL_LINES);
+			glVertex2d(u+m[0], v+m[1]);
+			glVertex2d(u+m[0]-mv[0], v+m[1]-mv[1]);
+			glEnd();
+		}
+	}
+	
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
 
 }
 

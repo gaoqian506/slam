@@ -34,6 +34,7 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_epi_line = NULL;
 	m_warp = NULL;
 	m_weight = NULL;
+	m_of = NULL;
 
 	m_pixel_info[0] = 0;
 	
@@ -225,6 +226,10 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_lsd4();
 			m_frame->pos += calc_dt_lsd4();
 		}
+		if (m_frame && Config::method == Config::Of1) {
+			prepare_residual_of1();
+			calc_du_of1();
+		}
 		break;
 	case 2:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -414,6 +419,12 @@ char* Slam::pixel_info(const Vec2d& u) {
 	return m_pixel_info;
 }
 
+Image* Slam::get_optical_flow() {
+
+	return m_of;
+
+}
+
 void Slam::initialize(Image* image) {
 
 	if (m_mask) { return; }
@@ -433,6 +444,7 @@ void Slam::initialize(Image* image) {
 	m_epi_line = new CvImage(w, h, Image::Float32, 3);
 	m_warp = new CvImage(w, h, Image::Float32);
 	m_weight = new CvImage(w, h, Image::Float32);
+	m_of = new CvImage(w, h, Image::Float32, 2);
 }
 
 void Slam::push(Image* image) {
@@ -1080,6 +1092,53 @@ void Slam::prepare_residual_epi2(bool with_trans/* = false*/) {
 			p_dg[i] = 0;
 			pwarp[i] = 0;
 			pw[i] = 0;
+		}
+	}
+
+}
+
+void Slam::prepare_residual_of1() {
+
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	double m[2];
+	float* pfloat;
+
+	unsigned char* pm = (unsigned char*)m_mask->data();
+	float* pkg = (float*)m_key->gray->data();
+	float* pcg = (float*)m_frame->gray->data();
+	float* pdg = (float*)m_residual->data();
+	float* pwarp = (float*)m_warp->data();
+	Vec2f* pof = (Vec2f*)m_of->data();
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width;
+		v = i / m_width;
+
+		m[0] = u - pof[i][0];
+		m[1] = v - pof[i][1];
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			pm[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+			pfloat = pcg + v * m_width + u;
+			pwarp[i] = SAMPLE_2D(pfloat[0], pfloat[1], pfloat[m_width], pfloat[m_width+1], m[0], m[1]);
+			pdg[i] = pwarp[i] - pkg[i];
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			pm[i] = 0;
+			pdg[i] = 0;
+			pwarp[i] = 0;
+			//pw[i] = 0;
 		}
 	}
 
@@ -2090,6 +2149,37 @@ Vec3d Slam::calc_e_epi2() {
 	}
 	ep.normalize();
 	return ep;
+
+}
+
+void Slam::calc_du_of1() {
+
+
+	if (!m_key || !m_frame) { return; }
+
+	int total = m_width * m_height;
+	int u, v;//, count = 0;
+	Vec2f iu;
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	//float* pd = (float*)m_key->depth->data();
+	float* pdg = (float*)m_residual->data();
+	Vec2f* pof = (Vec2f*)m_of->data();
+	//float* pw = (float*)m_weight->data();
+	unsigned char* pm = (unsigned char*)m_mask->data();
+
+	for (int i = 0; i < total; i++) {
+
+		if (!pm[i]) { continue; }
+
+		iu[0] = piu[i];
+		iu[1] = piv[i];
+		pof[i] += iu * (pdg[i]/(iu.length2() + 1));
+	}
+
+}
+void Slam::smooth_of_of1() {
+
 
 }
 

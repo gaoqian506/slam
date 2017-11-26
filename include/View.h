@@ -44,6 +44,7 @@ public:
 	void draw_points();
 	void draw_mesh();
 	void draw_camera_instance(Camera* camera, bool with_points = true);
+	void draw_optical_flow(Image* of);
 	ViewContent* content() { return m_content; }
 
 	

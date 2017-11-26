@@ -16,6 +16,28 @@ struct Vec2f {
 	float& operator[](int idx) {
 		return val[idx];
 	}
+
+
+	Vec2f& operator+=(const Vec2f& right) {
+	
+		val[0] += right.val[0];
+		val[1] += right.val[1];
+		return *this;
+	}
+
+	Vec2f& operator*=(float f) {
+	
+		val[0] *= f;
+		val[1] *= f;
+		return *this;
+	}
+
+	Vec2f operator*(float f) {
+		Vec2f r(*this);
+		r *= f;
+		return r;
+	}
+	
 	
 	float length2() { return val[0]*val[0]+val[1]*val[1]; }	
 	float val[2];

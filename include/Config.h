@@ -39,13 +39,16 @@ public:
 					// w = exp(-dot(l,e)/sigma)
 		Lsd4,	 	// E(dt) = (dot(It, dt)-dg)^2
 					// E(dr) = w(dot(Ir, dr)-dg)^2
-					// w = dot(Ir,t);		
+					// w = dot(Ir,t);
+		Of1,		// E = Iudu-dg
+					// of[i] = mean(of[i]);
 	};
 
 	static int max_width;
 	static bool manually_content;
 	//static bool epipolar_mode;
 	static Method method;
+	static int of_skip;
 
 
 };
