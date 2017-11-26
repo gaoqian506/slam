@@ -32,6 +32,13 @@ struct Vec2f {
 		return *this;
 	}
 
+	Vec2f& operator/=(float f) {
+	
+		val[0] /= f;
+		val[1] /= f;
+		return *this;
+	}
+
 	Vec2f operator*(float f) {
 		Vec2f r(*this);
 		r *= f;

@@ -67,7 +67,7 @@ View::View(ViewContent* vc) {
 
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 	glutInitWindowPosition(0, 0); 
-	glutInitWindowSize(600, 600);
+	glutInitWindowSize(1000, 1000);
 	glutCreateWindow("OpenGL 3D View");
 	glutDisplayFunc(g_display);
 	//glutIdleFunc(g_idle);
@@ -569,6 +569,20 @@ void View::draw_optical_flow(Image* of) {
 			glVertex2d(u+m[0]-mv[0], v+m[1]-mv[1]);
 			glEnd();
 		}
+	}
+
+	if (m_pixel_pos[0] >= 0 && m_pixel_pos[0] < w &&
+		m_pixel_pos[1] >= 0 && m_pixel_pos[1] < h) {
+
+		int u = (int)m_pixel_pos[0];
+		int v = (int)m_pixel_pos[1];
+		mv = ((Vec2f*)of->data())[v*w+u];
+
+		glColor3d(1, 0, 0);
+		glBegin(GL_LINES);
+		glVertex2d(u+m[0], v+m[1]);
+		glVertex2d(u+m[0]-mv[0], v+m[1]-mv[1]);
+		glEnd();
 	}
 	
 

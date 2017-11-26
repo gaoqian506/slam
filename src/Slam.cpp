@@ -272,6 +272,10 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_lsd4();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_lsd4());
 		}
+		if (m_frame && Config::method == Config::Of1) {
+			prepare_residual_of1();
+			smooth_of_of1();
+		}
 		break;
 	case 3:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -313,6 +317,11 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_lsd4();
 			m_frame->pos += calc_dt_lsd4();
 			MatrixToolbox::update_rotation(m_frame->rotation, calc_dr_lsd4());
+		}
+		if (m_frame && Config::method == Config::Of1) {
+			prepare_residual_of1();
+			smooth_of_of1();
+			calc_du_of1();
 		}
 		break;
 	case 4:
@@ -376,7 +385,7 @@ char* Slam::pixel_info(const Vec2d& u) {
 		"key:%f cur:%f\n"
 		"res:%f weight:%f mask:%d\n"
 		"grad: %f, %f\n"
-		"epi line: %f, %f, %f\n"
+		"of: %f, %f\n"
 		"depth: %f\n"
 		"e: %f, %f, %f\n"
 		"t: %f, %f, %f\n"
@@ -393,9 +402,11 @@ char* Slam::pixel_info(const Vec2d& u) {
 		m_mask ? *((unsigned char*)m_mask->at(idx)) : 0,
 		m_key ? ((float*)m_key->gradient[0]->at(idx))[0] : 0,
 		m_key ? ((float*)m_key->gradient[1]->at(idx))[0] : 0,
-		pl ? pl[idx][0] : 0,
-		pl ? pl[idx][1] : 0,
-		pl ? pl[idx][2] : 0,
+		m_of ? ((Vec2f*)m_of->data())[idx][0] : 0,
+		m_of ? ((Vec2f*)m_of->data())[idx][1] : 0,
+		//pl ? pl[idx][0] : 0,
+		//pl ? pl[idx][1] : 0,
+		//pl ? pl[idx][2] : 0,
 		//((Vec2f*)m_gradient->at(idx))[0][0],
 		//((Vec2f*)m_gradient->at(idx))[0][1],
 		m_key ? *((float*)m_key->depth->at(idx)) : 0.0,
@@ -2174,13 +2185,48 @@ void Slam::calc_du_of1() {
 
 		iu[0] = piu[i];
 		iu[1] = piv[i];
-		pof[i] += iu * (pdg[i]/(iu.length2() + 1));
+		pof[i] += iu * (pdg[i]/(iu.length2() + 0.01));
 	}
 
 }
 void Slam::smooth_of_of1() {
 
+	std::cout << "Slam::smooth_of_of1" << std::endl;
 
+	if (!m_key || !m_frame) { return; }
+	int total = m_width * m_height;
+	float* pg = (float*)m_key->gray->data();
+	Vec2f* pof = (Vec2f*)m_of->data();
+	int u, v, u2, v2;
+	float dg, w, W;//, d;
+	Vec2f of;
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+		W = 0;
+		//d = 0;
+		of = 0;
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+				//dg = pg[i+offid[k]]-pg[i];
+				w = 1;//exp(-dg*dg/0.25);
+				of += pof[i+offid[k]] * w;
+				W += w;
+			}
+		}
+		pof[i] = of/=W;
+	}
 }
 
 void Slam::wipe_depth(const Vec3d& t) {
