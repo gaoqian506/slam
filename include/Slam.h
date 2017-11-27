@@ -52,6 +52,7 @@ private:
 	void prepare_residual_lsd4();
 	void prepare_residual_epi2(bool with_trans = false);
 	void prepare_residual_of1();
+	void prepare_residual_of2();
 	void prepare_residual_gof1();
 	Vec3d calc_delta_t();
 	Vec3d calc_delta_r();
@@ -74,6 +75,7 @@ private:
 	Vec3d calc_dt_lsd4();
 	Vec3d calc_e_epi2();
 	void calc_du_of1();
+	void calc_du_of2();
 	void calc_du_gof1();
 	void smooth_of_of1();
 	void wipe_depth(const Vec3d& t);

@@ -131,8 +131,8 @@ Image* Slam::get_debug_image(const int& idx) {
 		m_image_name = "frame grad(6)";
 	}
 	else if (idx == 6) {
-		which1 = m_grad_residual;
-		m_image_name = "grad residual(7)";
+		which1 = m_gradient;
+		m_image_name = "warp gradient(7)";
 	}		
 	else if (idx == 7) {
 		which1 = m_of;
@@ -255,6 +255,10 @@ void Slam::func_manualy(int idx) {
 		if (m_frame && Config::method == Config::Gof1) {
 			prepare_residual_gof1();
 			calc_du_gof1();
+		}
+		if (m_frame && Config::method == Config::Of2) {
+			prepare_residual_of2();
+			calc_du_of2();
 		}		
 		break;
 	case 2:
@@ -1184,6 +1188,69 @@ void Slam::prepare_residual_of1() {
 			pm[i] = 0;
 			pdg[i] = 0;
 			pwarp[i] = 0;
+			//pw[i] = 0;
+		}
+	}
+
+}
+
+
+void Slam::prepare_residual_of2() {
+
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	double m[2];
+	float *pfi1, *pfiu, *pfiv;
+	//double iu[0];
+
+	unsigned char* pm = (unsigned char*)m_mask->data();
+	float* pi0 = (float*)m_key->gray->data();
+	float* pi1 = (float*)m_frame->gray->data();
+	float* pit = (float*)m_residual->data();
+	float* pwi1 = (float*)m_warp->data();
+	Vec2f* put = (Vec2f*)m_of->data();
+	Vec2f* pwiu1 = (Vec2f*)m_gradient->data();
+
+	//float* piu0 = (float*)m_key->gradient[0]->data();
+	//float* piv0 = (float*)m_key->gradient[1]->data();
+	float* piu1 = (float*)m_frame->gradient[0]->data();
+	float* piv1 = (float*)m_frame->gradient[1]->data();
+
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width;
+		v = i / m_width;
+
+		m[0] = u - put[i][0];
+		m[1] = v - put[i][1];
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			pm[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+
+			pfi1 = pi1 + v * m_width + u;
+			pfiu = piu1 + v * m_width + u;
+			pfiv = piv1 + v * m_width + u;
+			pwi1[i] = SAMPLE_2D(pfi1[0], pfi1[1], pfi1[m_width], pfi1[m_width+1], m[0], m[1]);
+			pit[i] = pwi1[i] - pi0[i];
+			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
+			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
+
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			pm[i] = 0;
+			pit[i] = 0;
+			pwi1[i] = 0;
+			pwiu1[i] = 0;
 			//pw[i] = 0;
 		}
 	}
@@ -2284,6 +2351,35 @@ void Slam::calc_du_of1() {
 		iu[0] = piu[i];
 		iu[1] = piv[i];
 		pof[i] += iu * (pdg[i]/(iu.length2() + 0.01));
+	}
+
+}
+
+
+void Slam::calc_du_of2() {
+
+
+	if (!m_key || !m_frame) { return; }
+
+	int total = m_width * m_height;
+	int u, v;//, count = 0;
+	Vec2f iu;
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	//Vec2f* pwiv1 = (Vec2f*)m_residual->data();
+	//float* pd = (float*)m_key->depth->data();
+	float* pit = (float*)m_residual->data();
+	Vec2f* put = (Vec2f*)m_of->data();
+	//float* pw = (float*)m_weight->data();
+	unsigned char* pm = (unsigned char*)m_mask->data();
+
+	for (int i = 0; i < total; i++) {
+
+		if (!pm[i]) { continue; }
+
+		iu[0] = piu0[i];
+		iu[1] = piv0[i];
+		put[i] -= iu * (pit[i]/(iu.length2() + 0.01));
 	}
 
 }

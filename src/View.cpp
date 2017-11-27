@@ -440,7 +440,7 @@ void View::draw_field(Image* field) {
 			mv = ((Vec2f*)field->data())[v*w+u];
 			glBegin(GL_LINES);
 			glVertex2d(u+m[0], v+m[1]);
-			glVertex2d(u+m[0]-mv[0], v+m[1]-mv[1]);
+			glVertex2d(u+m[0]+mv[0], v+m[1]+mv[1]);
 			glEnd();
 		}
 	}
@@ -456,7 +456,7 @@ void View::draw_field(Image* field) {
 		glColor3d(1, 0, 0);
 		glBegin(GL_LINES);
 		glVertex2d(u+m[0], v+m[1]);
-		glVertex2d(u+m[0]-mv[0], v+m[1]-mv[1]);
+		glVertex2d(u+m[0]+mv[0], v+m[1]+mv[1]);
 		glEnd();
 		glLineWidth(1);
 	}

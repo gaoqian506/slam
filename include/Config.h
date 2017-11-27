@@ -44,6 +44,8 @@ public:
 					// of[i] = mean(of[i]);
 		Gof1,		// gradient-based optical flow
 					// E = Gudu-dg (g:gradient)
+		Of2,		// IuUt + It = 0;
+					// Ut = sum(wUt)/W, W = dot(Iu0, Iu1)
 	};
 
 	static int max_width;

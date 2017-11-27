@@ -25,6 +25,14 @@ struct Vec2f {
 		return *this;
 	}
 
+	Vec2f& operator-=(const Vec2f& right) {
+	
+		val[0] -= right.val[0];
+		val[1] -= right.val[1];
+		return *this;
+	}
+
+
 	Vec2f& operator*=(float f) {
 	
 		val[0] *= f;
