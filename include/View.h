@@ -39,6 +39,7 @@ public:
 	void start_content();
 	void draw_content();
 	void draw_image(Image* image);
+	void draw_field(Image* image);
 	void print_text(const char* str, int x, int y);
 	void draw_cameras();
 	void draw_points();

@@ -132,8 +132,8 @@ void View::display() {
 	case DisplayImage:
 		glColor3d(0.72, 0.38, 0.49);
 		draw_image(m_content->get_debug_image(m_display_index));
-		glColor3d(0.92, 0.56, 0.37);
-		draw_optical_flow(m_content->get_optical_flow());
+		//glColor3d(0.92, 0.56, 0.37);
+		//draw_optical_flow(m_content->get_optical_flow());
 		glColor3d(0.35, 0.92, 0.72);
 		print_text(m_content->pixel_info(m_pixel_pos), 5, 15);
 		break;
@@ -364,6 +364,10 @@ void View::draw_content() {
 void View::draw_image(Image* image) {
 
 	if(!image) { return; }
+	if (image->channels() == 2) {
+		draw_field(image);
+		return;
+	}
 
 	//glScaled(10, 10, 10);
 
@@ -401,6 +405,62 @@ void View::draw_image(Image* image) {
 	// glEnd();
 
 	m_current_image = image;
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+}
+
+void View::draw_field(Image* field) {
+
+
+	if(!field) { return; }
+	assert(field->channels() == 2 && 
+		field->type() == Image::Float32);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	
+	GlToolbox::orthogonal_pixel(GlToolbox::Center);
+	glScaled(m_trans_2d[0], m_trans_2d[0], 1);
+	int w = field->width();
+	int h = field->height();
+
+	int skip = Config::field_skip, id;
+	Vec2f mv;
+	double m[2] = { -w*0.5+0.5, -h*0.5+0.5 };
+
+	for (int u = 0; u < w; u+=skip) {
+
+		for (int v = 0; v < h; v+=skip) {
+			mv = ((Vec2f*)field->data())[v*w+u];
+			glBegin(GL_LINES);
+			glVertex2d(u+m[0], v+m[1]);
+			glVertex2d(u+m[0]-mv[0], v+m[1]-mv[1]);
+			glEnd();
+		}
+	}
+
+	if (m_pixel_pos[0] >= 0 && m_pixel_pos[0] < w &&
+		m_pixel_pos[1] >= 0 && m_pixel_pos[1] < h) {
+
+		int u = (int)m_pixel_pos[0];
+		int v = (int)m_pixel_pos[1];
+		mv = ((Vec2f*)field->data())[v*w+u];
+
+		glLineWidth(2);
+		glColor3d(1, 0, 0);
+		glBegin(GL_LINES);
+		glVertex2d(u+m[0], v+m[1]);
+		glVertex2d(u+m[0]-mv[0], v+m[1]-mv[1]);
+		glEnd();
+		glLineWidth(1);
+	}
+	
 
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
@@ -546,7 +606,7 @@ void View::draw_camera_instance(Camera* camera, bool with_points /*=true*/) {
 
 void View::draw_optical_flow(Image* of) {
 
-
+	assert(0);
 	if(!of) { return; }
 
 	glMatrixMode(GL_PROJECTION);

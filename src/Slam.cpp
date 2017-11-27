@@ -35,8 +35,11 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_warp = NULL;
 	m_weight = NULL;
 	m_of = NULL;
+	memset(m_grad_grad, 0, sizeof(m_grad_grad));
+	m_grad_residual = 0;
 
 	m_pixel_info[0] = 0;
+
 	
 }
 
@@ -99,53 +102,72 @@ bool Slam::changed() {
 
 Image* Slam::get_debug_image(const int& idx) {
 
-	Image* which = NULL;
+	Image *which1 = NULL, *which2 = NULL;
 
-	if (idx == 0) {
-		which = m_frame ? m_frame->gray : NULL;
-		m_image_name = "current gray";
+	if (idx == 0 && m_frame) {
+		which1 = m_frame->gray;
+		m_image_name = "current gray(1)";
 	}
 	else if (idx == 1) {
-		which = m_warp;
-		m_image_name = "warp";
+		which1 = m_warp;
+		m_image_name = "warp(2)";
 	}
-	else if (idx == 2) {
-		which = m_key ? m_key->gray : NULL;
-		m_image_name = "key gray";
+	else if (idx == 2 && m_key) {
+		which1 = m_key->gray;
+		m_image_name = "key gray(3)";
 	}
 	else if (idx == 3) {
-		which = m_residual;
-		m_image_name = "residual";
+		which1 = m_residual;
+		m_image_name = "residual(4)";
 	}
-	else if (idx == 4) {
-		which = m_weight;
-		m_image_name = "weight";
+	else if (idx == 4 && m_key) {
+		which1 = m_key->gradient[0];
+		which2 = m_key->gradient[1];
+		m_image_name = "key grad(5)";
 	}
-	else if (idx == 5) {
-		which = m_key ? m_key->depth : NULL;
-		m_image_name = "key depth";
+	else if (idx == 5 && m_frame) {
+		which1 = m_frame->gradient[0];
+		which2 = m_frame->gradient[1];
+		m_image_name = "frame grad(6)";
 	}
 	else if (idx == 6) {
-		which = m_mask;
-		m_image_name = "mask";
-	}
+		which1 = m_grad_residual;
+		m_image_name = "grad residual(7)";
+	}		
 	else if (idx == 7) {
-		which = m_key ? m_key->gradient[0] : NULL;
-		m_image_name = "key gradient x";
+		which1 = m_of;
+		m_image_name = "optical flow(8)";
 	}
 	else if (idx == 8) {
-		which = m_key ? m_key->gradient[1] : NULL;
-		m_image_name = "key gradient y";
+		which1 = m_grad_grad[0];
+		which2 = m_grad_grad[1];
+		m_image_name = "guu, guv(9)";
+	}	
+	//else if (idx == 8) {
+	//	which1 = m_key ? m_key->depth : NULL;
+	//	m_image_name = "key depth(9)";
+	//}
+	else if (idx == 9) {
+		which1 = m_mask;
+		m_image_name = "mask(10)";
 	}
 	else {
-		which = NULL;
+		which1 = NULL;
 	}
 
-	if (which) {
+	if (which1 && !which2 && which1->channels() == 1) {
 		double min, max, scale;
-		which->min_max(&min, &max);
+		which1->min_max(&min, &max);
 		scale = 1./(max-min);
-		which->convert_to(m_debug_image, Image::Float32, scale, -min/(max-min));
+		which1->convert_to(m_debug_image, Image::Float32, scale, -min/(max-min));
+		return m_debug_image;
+	}
+	else if (which1 && which2) {
+		which1->merge(which2, m_debug_image);
+		return m_debug_image;
+	}
+	else if (which1) {
+		which1->copy_to(m_debug_image);
 		return m_debug_image;
 	}
 	else {
@@ -230,6 +252,10 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_of1();
 			calc_du_of1();
 		}
+		if (m_frame && Config::method == Config::Gof1) {
+			prepare_residual_gof1();
+			calc_du_gof1();
+		}		
 		break;
 	case 2:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -320,8 +346,9 @@ void Slam::func_manualy(int idx) {
 		}
 		if (m_frame && Config::method == Config::Of1) {
 			prepare_residual_of1();
-			smooth_of_of1();
 			calc_du_of1();
+			prepare_residual_of1();
+			smooth_of_of1();
 		}
 		break;
 	case 4:
@@ -384,6 +411,7 @@ char* Slam::pixel_info(const Vec2d& u) {
 		"pos:%f, %f\n"
 		"key:%f cur:%f\n"
 		"res:%f weight:%f mask:%d\n"
+		"grad res: %f, %f\n"
 		"grad: %f, %f\n"
 		"of: %f, %f\n"
 		"depth: %f\n"
@@ -400,6 +428,8 @@ char* Slam::pixel_info(const Vec2d& u) {
 		m_residual ? *((float*)m_residual->at(idx)) : 0,
 		m_weight ? *((float*)m_weight->at(idx)) : 0,
 		m_mask ? *((unsigned char*)m_mask->at(idx)) : 0,
+		m_grad_residual ? ((Vec2f*)m_grad_residual->data())[idx][0] : 0,
+		m_grad_residual ? ((Vec2f*)m_grad_residual->data())[idx][1] : 0,
 		m_key ? ((float*)m_key->gradient[0]->at(idx))[0] : 0,
 		m_key ? ((float*)m_key->gradient[1]->at(idx))[0] : 0,
 		m_of ? ((Vec2f*)m_of->data())[idx][0] : 0,
@@ -456,6 +486,11 @@ void Slam::initialize(Image* image) {
 	m_warp = new CvImage(w, h, Image::Float32);
 	m_weight = new CvImage(w, h, Image::Float32);
 	m_of = new CvImage(w, h, Image::Float32, 2);
+
+	for (int i = 0; i < 4; i++) {
+		m_grad_grad[i] = new CvImage(w, h, Image::Float32);
+	}
+	m_grad_residual = new CvImage(w, h, Image::Float32, 2);
 }
 
 void Slam::push(Image* image) {
@@ -1154,6 +1189,69 @@ void Slam::prepare_residual_of1() {
 	}
 
 }
+
+
+void Slam::prepare_residual_gof1() {
+
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	double m[2], cgu[2];
+	float *pfg, *pfgu, *pfgv;
+
+	unsigned char* pm = (unsigned char*)m_mask->data();
+	float* pkg = (float*)m_key->gray->data();
+	float* pcg = (float*)m_frame->gray->data();
+	float* pdg = (float*)m_residual->data();
+	float* pwarp = (float*)m_warp->data();
+	Vec2f* pof = (Vec2f*)m_of->data();
+	Vec2f* pdgu = (Vec2f*)m_grad_residual->data();
+
+	float* pkgu = (float*)m_key->gradient[0]->data();
+	float* pkgv = (float*)m_key->gradient[1]->data();
+	float* pcgu = (float*)m_frame->gradient[0]->data();
+	float* pcgv = (float*)m_frame->gradient[1]->data();
+
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width;
+		v = i / m_width;
+
+		m[0] = u - pof[i][0];
+		m[1] = v - pof[i][1];
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			pm[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+			pfg = pcg + v * m_width + u;
+			pfgu = pcgu + v * m_width + u;
+			pfgv = pcgv + v * m_width + u;
+			pwarp[i] = SAMPLE_2D(pfg[0], pfg[1], pfg[m_width], pfg[m_width+1], m[0], m[1]);
+			pdg[i] = pwarp[i] - pkg[i];
+			cgu[0] = SAMPLE_2D(pfgu[0], pfgu[1], pfgu[m_width], pfgu[m_width+1], m[0], m[1]);
+			cgu[1] = SAMPLE_2D(pfgv[0], pfgv[1], pfgv[m_width], pfgv[m_width+1], m[0], m[1]);
+			pdgu[i][0] =  cgu[0]- pkgu[i];
+			pdgu[i][1] =  cgu[1]- pkgv[i];
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			pm[i] = 0;
+			pdg[i] = 0;
+			pwarp[i] = 0;
+			pdgu[i] = 0;
+			//pw[i] = 0;
+		}
+	}
+
+}
+
 
 Vec3d Slam::calc_delta_t() {
 
@@ -2189,6 +2287,48 @@ void Slam::calc_du_of1() {
 	}
 
 }
+
+
+void Slam::calc_du_gof1() {
+
+
+	if (!m_key || !m_frame) { return; }
+
+	int total = m_width * m_height;
+	int u, v;//, count = 0;
+	Vec2f iu;
+	//float* piu = (float*)m_key->gradient[0]->data();
+	//float* piv = (float*)m_key->gradient[1]->data();
+	//float* pdg = (float*)m_residual->data();
+	Vec2f* pof = (Vec2f*)m_of->data();
+	Vec2f* pdgu = (Vec2f*)m_grad_residual->data();
+	unsigned char* pm = (unsigned char*)m_mask->data();
+	float* guu = (float*)m_grad_grad[0]->data();
+	float* guv = (float*)m_grad_grad[1]->data();
+	float* gvu = (float*)m_grad_grad[2]->data();
+	float* gvv = (float*)m_grad_grad[3]->data();
+	double det, J[4], iJ[4], l = 1;
+
+	for (int i = 0; i < total; i++) {
+
+		if (!pm[i]) { continue; }
+
+		J[0] = guu[i]+l;
+		J[1] = guv[i];
+		J[2] = gvu[i];
+		J[3] = gvv[i]+l;
+		det = J[0]*J[3]-J[1]*J[2];
+		iJ[0] = J[3]/det;
+		iJ[1] = -J[2]/det;
+		iJ[2] = -J[1]/det;
+		iJ[3] = J[0]/det;
+
+		pof[i][0] += iJ[0]*pdgu[i][0]+iJ[1]*pdgu[i][1];
+		pof[i][1] += iJ[2]*pdgu[i][0]+iJ[3]*pdgu[i][1];
+	}
+
+}
+
 void Slam::smooth_of_of1() {
 
 	std::cout << "Slam::smooth_of_of1" << std::endl;
@@ -2196,9 +2336,14 @@ void Slam::smooth_of_of1() {
 	if (!m_key || !m_frame) { return; }
 	int total = m_width * m_height;
 	float* pg = (float*)m_key->gray->data();
+	float* pdg = (float*)m_residual->data();
 	Vec2f* pof = (Vec2f*)m_of->data();
+
 	int u, v, u2, v2;
-	float dg, w, W;//, d;
+	float w, W;//, d;
+	double dgu, dgt;
+	const double& su = Config::sigma2_dgdu;
+	const double& st = Config::sigma2_dgdt;
 	Vec2f of;
 	int offid[9] = { 
 		-m_width-1, -m_width, -m_width+1,
@@ -2213,14 +2358,14 @@ void Slam::smooth_of_of1() {
 		u = i % m_width;
 		v = i / m_width;
 		W = 0;
-		//d = 0;
 		of = 0;
 		for (int k = 0; k < 9; k++) {
 			u2 = u + offx[k];
 			v2 = v + offy[k];
 			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
-				//dg = pg[i+offid[k]]-pg[i];
-				w = 1;//exp(-dg*dg/0.25);
+				dgu = pg[i+offid[k]]-pg[i];
+				dgt = pdg[i+offid[k]];
+				w = exp(-dgu*dgu*su-dgt*dgt*st);
 				of += pof[i+offid[k]] * w;
 				W += w;
 			}
@@ -2275,6 +2420,11 @@ void Slam::create_keyframe(Image* image) {
 		pre_key->depth->set(0);
 	}
 	m_key->depth->set(0.1);
+
+	m_key->gradient[0]->sobel_x(m_grad_grad[0]);
+	m_key->gradient[0]->sobel_y(m_grad_grad[1]);
+	m_key->gradient[1]->sobel_x(m_grad_grad[2]);
+	m_key->gradient[1]->sobel_y(m_grad_grad[3]);
 
 	m_keyframes.push_back(m_key);
 	m_cameras[m_camera_count] = m_key;

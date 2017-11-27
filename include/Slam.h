@@ -52,6 +52,7 @@ private:
 	void prepare_residual_lsd4();
 	void prepare_residual_epi2(bool with_trans = false);
 	void prepare_residual_of1();
+	void prepare_residual_gof1();
 	Vec3d calc_delta_t();
 	Vec3d calc_delta_r();
 	Vec3d calc_epi_point();
@@ -73,6 +74,7 @@ private:
 	Vec3d calc_dt_lsd4();
 	Vec3d calc_e_epi2();
 	void calc_du_of1();
+	void calc_du_gof1();
 	void smooth_of_of1();
 	void wipe_depth(const Vec3d& t);
 	void create_keyframe(Image* image);
@@ -99,6 +101,8 @@ private:
 	Image* m_warp;
 	Image* m_weight;
 	Image* m_of;
+	Image* m_grad_grad[4];	// {guu guv; gvu gvv }
+	Image* m_grad_residual;
 	bool m_changed;
 	char m_pixel_info[MAX_PIXEL_INFO];
 	int m_width;

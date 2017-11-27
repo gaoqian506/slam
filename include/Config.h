@@ -42,6 +42,8 @@ public:
 					// w = dot(Ir,t);
 		Of1,		// E = Iudu-dg
 					// of[i] = mean(of[i]);
+		Gof1,		// gradient-based optical flow
+					// E = Gudu-dg (g:gradient)
 	};
 
 	static int max_width;
@@ -49,6 +51,9 @@ public:
 	//static bool epipolar_mode;
 	static Method method;
 	static int of_skip;
+	static int field_skip;
+	static double sigma2_dgdu; //0.2*0.2;
+	static double sigma2_dgdt; //0.2*0.2;
 
 
 };

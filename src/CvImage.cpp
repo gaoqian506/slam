@@ -177,6 +177,18 @@ void* CvImage::at(int idx) {
 	//assert(0);
 }
 
+void CvImage::merge(Image* other, Image*& out) {
+
+	if (out == NULL) {
+		out = new CvImage();
+	}
+	CvImage* cv_other = static_cast<CvImage*>(other);
+	CvImage* cv_out = static_cast<CvImage*>(out);
+	const cv::Mat ml[2] = { m_cv_mat, cv_other->m_cv_mat };
+	cv::merge(ml, 2, cv_out->m_cv_mat);
+
+}
+
 //float CvImage::sample(const float& a, const float& b) {
 
 	//assert(m_cv_mat.type() == CV_32F);
