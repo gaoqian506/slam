@@ -32,6 +32,12 @@ struct Vec2f {
 		return *this;
 	}
 
+	Vec2f operator-(const Vec2f& right) {
+		Vec2f r(*this);
+		r -= right;
+		return r;
+	}
+
 
 	Vec2f& operator*=(float f) {
 	

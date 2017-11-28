@@ -78,6 +78,7 @@ private:
 	void calc_du_of2();
 	void calc_du_gof1();
 	void smooth_of_of1();
+	void smooth_of_of2();
 	void wipe_depth(const Vec3d& t);
 	void create_keyframe(Image* image);
 	void update_depth();

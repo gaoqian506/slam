@@ -139,9 +139,8 @@ Image* Slam::get_debug_image(const int& idx) {
 		m_image_name = "optical flow(8)";
 	}
 	else if (idx == 8) {
-		which1 = m_grad_grad[0];
-		which2 = m_grad_grad[1];
-		m_image_name = "guu, guv(9)";
+		which1 = m_weight;
+		m_image_name = "weight(9)";
 	}	
 	//else if (idx == 8) {
 	//	which1 = m_key ? m_key->depth : NULL;
@@ -306,6 +305,10 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_of1();
 			smooth_of_of1();
 		}
+		if (m_frame && Config::method == Config::Of2) {
+			prepare_residual_of2();
+			smooth_of_of2();
+		}	
 		break;
 	case 3:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -354,6 +357,12 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_of1();
 			smooth_of_of1();
 		}
+		if (m_frame && Config::method == Config::Of2) {
+			prepare_residual_of2();
+			calc_du_of2();
+			prepare_residual_of2();
+			smooth_of_of2();
+		}	
 		break;
 	case 4:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -376,6 +385,12 @@ void Slam::func_manualy(int idx) {
 			update_depth_lsd2();
 			smooth_depth_lsd2();
 		}
+		if (m_frame && Config::method == Config::Of2) {
+			prepare_residual_of2();
+			calc_du_of2();
+			prepare_residual_of2();
+			smooth_of_of2();
+		}	
 		break;
 	case 5:
 		if (m_frame && Config::method == Config::Lsd2) {
@@ -1202,7 +1217,7 @@ void Slam::prepare_residual_of2() {
 	
 	int total = m_width * m_height;
 	int u, v;
-	double m[2];
+	double m[2], w;
 	float *pfi1, *pfiu, *pfiv;
 	//double iu[0];
 
@@ -1213,9 +1228,10 @@ void Slam::prepare_residual_of2() {
 	float* pwi1 = (float*)m_warp->data();
 	Vec2f* put = (Vec2f*)m_of->data();
 	Vec2f* pwiu1 = (Vec2f*)m_gradient->data();
+	float* pw = (float*)m_weight->data();
 
-	//float* piu0 = (float*)m_key->gradient[0]->data();
-	//float* piv0 = (float*)m_key->gradient[1]->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
 	float* piu1 = (float*)m_frame->gradient[0]->data();
 	float* piv1 = (float*)m_frame->gradient[1]->data();
 
@@ -1225,8 +1241,8 @@ void Slam::prepare_residual_of2() {
 		u = i % m_width;
 		v = i / m_width;
 
-		m[0] = u - put[i][0];
-		m[1] = v - put[i][1];
+		m[0] = u + put[i][0];
+		m[1] = v + put[i][1];
 
 		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
 		
@@ -1243,7 +1259,9 @@ void Slam::prepare_residual_of2() {
 			pit[i] = pwi1[i] - pi0[i];
 			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
 			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
-
+			w = piu0[i]*pwiu1[i][0]+piv0[i]*pwiu1[i][1];
+			if (w < 0.01) { w = 0.01; }
+			pw[i] = w;
 			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
 		}
 		else { 
@@ -1251,7 +1269,7 @@ void Slam::prepare_residual_of2() {
 			pit[i] = 0;
 			pwi1[i] = 0;
 			pwiu1[i] = 0;
-			//pw[i] = 0;
+			pw[i] = 0.01;
 		}
 	}
 
@@ -2366,7 +2384,7 @@ void Slam::calc_du_of2() {
 	Vec2f iu;
 	float* piu0 = (float*)m_key->gradient[0]->data();
 	float* piv0 = (float*)m_key->gradient[1]->data();
-	//Vec2f* pwiv1 = (Vec2f*)m_residual->data();
+	Vec2f* pwiu1 = (Vec2f*)m_gradient->data();
 	//float* pd = (float*)m_key->depth->data();
 	float* pit = (float*)m_residual->data();
 	Vec2f* put = (Vec2f*)m_of->data();
@@ -2377,9 +2395,9 @@ void Slam::calc_du_of2() {
 
 		if (!pm[i]) { continue; }
 
-		iu[0] = piu0[i];
-		iu[1] = piv0[i];
-		put[i] -= iu * (pit[i]/(iu.length2() + 0.01));
+		iu[0] = piu0[i] + pwiu1[i][0];
+		iu[1] = piv0[i] + pwiu1[i][1];
+		put[i] -= iu * (pit[i]*2.0/(iu.length2() + 1));
 	}
 
 }
@@ -2469,6 +2487,74 @@ void Slam::smooth_of_of1() {
 		pof[i] = of/=W;
 	}
 }
+
+
+void Slam::smooth_of_of2() {
+
+	std::cout << "Slam::smooth_of_of2" << std::endl;
+
+	if (!m_key || !m_frame) { return; }
+	int total = m_width * m_height;
+	//float* pi0 = (float*)m_key->gray->data();
+	//float* pwit = (float*)m_residual->data();
+	Vec2f* put = (Vec2f*)m_of->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_weight->data();
+
+	int u, v, u2, v2;
+	float w, W;//, iu0[2];//, d;
+	//double A[4], iA[4], idet;
+	//double dgu, dgt;
+	//const double& su = Config::sigma2_dgdu;
+	//const double& st = Config::sigma2_dgdt;
+	Vec2f dut;
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+		W = 0;
+		dut = 0;
+		//iu0[0] = piu0[i];
+		//iu0[1] = piv0[i];
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+				w = pw[i+offid[k]];
+				dut += (put[i+offid[k]]-put[i])*w;
+				W += w;
+			}
+		}
+
+		put[i] += (dut/=W);
+
+		// A[0] = iu0[0]*iu0[0]+W;
+		// A[1] = iu0[0]*iu0[1];
+		// A[2] = A[1];
+		// A[3] = iu0[1]*iu0[1]+W;
+		// idet = 1.0/(A[0]*A[3]-A[1]*A[2]);
+		// iA[0] = A[3]*idet;
+		// iA[1] = -A[2]*idet;
+		// iA[2] = -A[1]*idet;
+		// iA[3] = A[0] *idet;
+
+		// put[i][0] += iA[0]*dut[0]+iA[1]*dut[1];
+		// put[i][1] += iA[2]*dut[0]+iA[3]*dut[1];
+	}
+}
+
 
 void Slam::wipe_depth(const Vec3d& t) {
 	
