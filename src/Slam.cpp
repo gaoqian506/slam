@@ -139,16 +139,17 @@ Image* Slam::get_debug_image(const int& idx) {
 		m_image_name = "optical flow(8)";
 	}
 	else if (idx == 8) {
-		which1 = m_weight;
-		m_image_name = "weight(9)";
-	}	
-	//else if (idx == 8) {
-	//	which1 = m_key ? m_key->depth : NULL;
-	//	m_image_name = "key depth(9)";
-	//}
+		which1 = m_dut;
+		m_image_name = "dut(9)";
+	}
 	else if (idx == 9) {
+		which1 = m_weight;
+		m_image_name = "weight(10)";
+	}	
+
+	else if (idx == 10) {
 		which1 = m_mask;
-		m_image_name = "mask(10)";
+		m_image_name = "mask(11)";
 	}
 	else {
 		which1 = NULL;
@@ -259,6 +260,11 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_of2();
 			calc_du_of2();
 		}		
+		if (m_frame && Config::method == Config::Of3) {
+			prepare_residual_of2();
+			calc_du_of3();
+			m_of->add(m_dut);
+		}		
 		break;
 	case 2:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -308,6 +314,11 @@ void Slam::func_manualy(int idx) {
 		if (m_frame && Config::method == Config::Of2) {
 			prepare_residual_of2();
 			smooth_of_of2();
+		}
+		if (m_frame && Config::method == Config::Of3) {
+			//prepare_residual_of2();
+			//calc_du_of3();
+			//m_of->add(m_dut);
 		}	
 		break;
 	case 3:
@@ -510,6 +521,7 @@ void Slam::initialize(Image* image) {
 		m_grad_grad[i] = new CvImage(w, h, Image::Float32);
 	}
 	m_grad_residual = new CvImage(w, h, Image::Float32, 2);
+	m_dut = new CvImage(w, h, Image::Float32, 2);
 }
 
 void Slam::push(Image* image) {
@@ -1219,7 +1231,7 @@ void Slam::prepare_residual_of2() {
 	int u, v;
 	double m[2], w;
 	float *pfi1, *pfiu, *pfiv;
-	//double iu[0];
+	double min_w = Config::min_weight_of3;
 
 	unsigned char* pm = (unsigned char*)m_mask->data();
 	float* pi0 = (float*)m_key->gray->data();
@@ -1260,7 +1272,7 @@ void Slam::prepare_residual_of2() {
 			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
 			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
 			w = piu0[i]*pwiu1[i][0]+piv0[i]*pwiu1[i][1];
-			if (w < 0.01) { w = 0.01; }
+			if (w < min_w) { w = min_w; }
 			pw[i] = w;
 			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
 		}
@@ -2398,6 +2410,128 @@ void Slam::calc_du_of2() {
 		iu[0] = piu0[i] + pwiu1[i][0];
 		iu[1] = piv0[i] + pwiu1[i][1];
 		put[i] -= iu * (pit[i]*2.0/(iu.length2() + 1));
+	}
+
+}
+
+void Slam::calc_du_of3() {
+
+
+	std::cout << "Slam::smooth_of_of3" << std::endl;
+
+	if (!m_key || !m_frame) { return; }
+	int total = m_width * m_height;
+	float* pwit = (float*)m_residual->data();
+	Vec2f* pdut = (Vec2f*)m_dut->data();
+	Vec2f* put = (Vec2f*)m_of->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_weight->data();
+	unsigned char* pm = (unsigned char*)m_mask->data();
+
+	int u, v, u2, v2;
+	float w, W, iu0[2], iu1[2];//, d;
+	double A[4], iA[4], B[2], it, iuu[2], idet, iuiu[4];
+	double lamda = Config::du_smooth_lamda_of3;
+	double s = Config::stable_factor_of3;
+
+	//double dgu, dgt;
+	//const double& su = Config::sigma2_dgdu;
+	//const double& st = Config::sigma2_dgdt;
+	//Vec2f dut;
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+		//W = 0;
+		//dut = 0;
+		memset(A, 0, sizeof(A));
+		memset(B, 0, sizeof(B));
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+
+					iu0[0] = piu0[i+offid[k]];
+					iu0[1] = piv0[i+offid[k]];
+					iuu[0] = put[i+offid[k]][0]-put[i][0];
+					iuu[1] = put[i+offid[k]][1]-put[i][1];
+					w = pw[i+offid[k]];
+					it = pwit[i+offid[k]];
+
+					iuiu[0] = iu0[0]*iu0[0];
+					iuiu[1] = iu0[0]*iu0[1];
+					iuiu[2] = iu0[1]*iu0[0];
+					iuiu[3] = iu0[1]*iu0[1];
+
+					if (pm[i]) {
+						A[0] += iuiu[0];
+						A[1] += iuiu[1];
+						//A[2] += iuiu[2];
+						A[3] += iuiu[3];
+
+						B[0] += iu0[0]*it;
+						B[1] += iu0[1]*it;
+
+					}
+
+					if (Config::use_i1_constrain_of3) {
+						
+						iu1[0] = pwiu1[i+offid[k]][0];
+						iu1[1] = pwiu1[i+offid[k]][1];
+						A[0] += iu1[0]*iu1[0];
+						A[1] += iu1[0]*iu1[1];
+						//A[2] += iu1[1]*iu1[0];
+						A[3] += iu1[1]*iu1[1];
+
+						B[0] += iu1[0]*it;
+						B[1] += iu1[1]*it;
+
+					}
+
+
+					iuiu[0] += s;
+					iuiu[3] += s;
+
+					A[0] += iuiu[0]*lamda*w;
+					A[1] += iuiu[1]*lamda*w;
+					//A[2] += iuiu[2]*lamda*w;
+					A[3] += iuiu[3]*lamda*w;
+
+					B[0] += -lamda*w*(iuiu[0]*iuu[0]+
+						iuiu[1]*iuu[1]);
+					B[1] += -lamda*w*(iuiu[2]*iuu[0]+
+						iuiu[3]*iuu[1]);
+
+			}
+		}
+
+		A[2] = A[1];
+
+		//A[0] += s;
+		//A[3] += s;
+
+		idet = 1.0/(A[0]*A[3]-A[1]*A[2]);
+		iA[0] = A[3]*idet;
+		iA[1] = -A[2]*idet;
+		iA[2] = -A[1]*idet;
+		iA[3] = A[0] *idet;
+
+
+		pdut[i][0] = -(iA[0]*B[0]+iA[1]*B[1]);
+		pdut[i][1] = -(iA[2]*B[0]+iA[3]*B[1]);
+
 	}
 
 }

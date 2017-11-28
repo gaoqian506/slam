@@ -46,6 +46,8 @@ public:
 					// E = Gudu-dg (g:gradient)
 		Of2,		// IuUt + It = 0;
 					// Ut = sum(wUt)/W, W = dot(Iu0, Iu1)
+		Of3,		// E(dut) = (iu0dut-it)^2+(iu1dut-it)^+
+					//		lamda w(iu0(dut-duu)^2)
 	};
 
 	static int max_width;
@@ -56,6 +58,10 @@ public:
 	static int field_skip;
 	static double sigma2_dgdu; //0.2*0.2;
 	static double sigma2_dgdt; //0.2*0.2;
+	static double du_smooth_lamda_of3;
+	static double stable_factor_of3;
+	static double min_weight_of3;
+	static bool use_i1_constrain_of3;
 
 
 };

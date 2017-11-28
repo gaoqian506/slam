@@ -3,7 +3,7 @@
 #include "Config.h"
 
 #include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp" 
+#include "opencv2/imgproc/imgproc.hpp"
 
 namespace ww {
 
@@ -45,9 +45,9 @@ void CvImage::gray(Image*& out) {
 	CvImage* cv_out = static_cast<CvImage*>(out);
 	cv::Mat gray;
 	cv::cvtColor(m_cv_mat, gray/*cv_out->cv_mat()*/, CV_BGR2GRAY); 
-	
-	gray.convertTo(cv_out->cv_mat(), CV_32F, 1.0/255.0);
-
+	cv::Mat grayf;
+	gray.convertTo(grayf, CV_32F, 1.0/255.0);
+	cv::GaussianBlur(grayf, cv_out->m_cv_mat,  cv::Size( 3, 3 ), 0, 0 );
 }
 void CvImage::sobel_x(Image*& out) {
 
@@ -186,6 +186,14 @@ void CvImage::merge(Image* other, Image*& out) {
 	CvImage* cv_out = static_cast<CvImage*>(out);
 	const cv::Mat ml[2] = { m_cv_mat, cv_other->m_cv_mat };
 	cv::merge(ml, 2, cv_out->m_cv_mat);
+
+}
+
+void CvImage::add(Image* right) {
+
+	assert(right);
+	CvImage* cv_right = static_cast<CvImage*>(right);
+	m_cv_mat += cv_right->m_cv_mat;
 
 }
 

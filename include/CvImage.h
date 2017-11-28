@@ -43,6 +43,7 @@ public:
 	virtual void min_max(double* min, double* max);
 	virtual void* at(int idx);
 	virtual void merge(Image* other, Image*& out);
+	virtual void add(Image* right);
 
 private:
 

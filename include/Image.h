@@ -36,6 +36,7 @@ public:
 	virtual void min_max(double* min, double* max) {}
 	virtual void* at(int idx) { return 0; }
 	virtual void merge(Image* other, Image*& out) {}
+	virtual void add(Image* right) {}
 
 	//virtual float sample(const float& a, const float& b) { return 0; }
 	

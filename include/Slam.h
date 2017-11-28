@@ -76,6 +76,7 @@ private:
 	Vec3d calc_e_epi2();
 	void calc_du_of1();
 	void calc_du_of2();
+	void calc_du_of3();
 	void calc_du_gof1();
 	void smooth_of_of1();
 	void smooth_of_of2();
@@ -106,6 +107,7 @@ private:
 	Image* m_of;
 	Image* m_grad_grad[4];	// {guu guv; gvu gvv }
 	Image* m_grad_residual;
+	Image* m_dut;
 	bool m_changed;
 	char m_pixel_info[MAX_PIXEL_INFO];
 	int m_width;
