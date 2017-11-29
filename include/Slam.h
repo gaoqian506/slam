@@ -77,6 +77,7 @@ private:
 	void calc_du_of1();
 	void calc_du_of2();
 	void calc_du_of3();
+	void calc_e_dr_of3();
 	void calc_du_gof1();
 	void smooth_of_of1();
 	void smooth_of_of2();

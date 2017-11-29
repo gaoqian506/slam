@@ -62,6 +62,7 @@ public:
 	static double stable_factor_of3;
 	static double min_weight_of3;
 	static bool use_i1_constrain_of3;
+	static double epi_sigma2_of3;
 
 
 };
