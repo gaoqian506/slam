@@ -40,6 +40,9 @@ move_left_64x64:
 tsukuba:
 	./$(TARGET) data/images/tsukuba_l.png data/images/tsukuba_r.png
 	
+tsukuba2:
+	./$(TARGET) data/images/tsukuba_l.png data/images/tsukuba_r_rot.png
+	
 debug:
 	gdb ./$(TARGET)
 

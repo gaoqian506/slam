@@ -100,7 +100,7 @@ bool Slam::changed() {
 	return m_changed;
 }
 
-Image* Slam::get_debug_image(const int& idx) {
+Image* Slam::get_debug_image(const int& idx, Image** weight /* = 0 */) {
 
 	Image *which1 = NULL, *which2 = NULL;
 
@@ -123,23 +123,28 @@ Image* Slam::get_debug_image(const int& idx) {
 	else if (idx == 4 && m_key) {
 		which1 = m_key->gradient[0];
 		which2 = m_key->gradient[1];
+		if (weight) { *weight = m_weight; }
 		m_image_name = "key grad(5)";
 	}
 	else if (idx == 5 && m_frame) {
 		which1 = m_frame->gradient[0];
 		which2 = m_frame->gradient[1];
+		if (weight) { *weight = m_weight; }
 		m_image_name = "frame grad(6)";
 	}
 	else if (idx == 6) {
 		which1 = m_gradient;
+		if (weight) { *weight = m_weight; }
 		m_image_name = "warp gradient(7)";
 	}		
 	else if (idx == 7) {
 		which1 = m_of;
+		if (weight) { *weight = m_weight; }
 		m_image_name = "optical flow(8)";
 	}
 	else if (idx == 8) {
 		which1 = m_dut;
+		if (weight) { *weight = m_weight; }
 		m_image_name = "dut(9)";
 	}
 	else if (idx == 9) {
@@ -372,6 +377,9 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_of2();
 			smooth_of_of2();
 		}	
+		if (m_frame && Config::method == Config::Of3) {
+			calc_e_dr_of3(true);
+		}		
 		break;
 	case 4:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -2534,21 +2542,24 @@ void Slam::calc_du_of3() {
 
 }
 
-void Slam::calc_e_dr_of3() {
+void Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 
 
-	std::cout << "Slam::calc_dt_dr_of3" << std::endl;
+	std::cout << "Slam::calc_e_dr_of3" << std::endl;
 
 	if (!m_key || !m_frame) { return; }
 	int total = m_width * m_height;
 	Vec2f* put = (Vec2f*)m_of->data();
+	float* pw = (float*)m_weight->data();
+	Vec2f* pdut = (Vec2f*)m_dut->data();
 
 	 Intrinsic in = m_key->intrinsic;
 	 double f1 = 1.0 / in.f;
-	 double m0[3], m1[3], x0[3], x1[3], x00[3];
-	 const double* R = m_frame->rotation.val;
+	 double m0[3], m1[3], x0[3], x1[3], x10[3];
+	 Vec9d iR = MatrixToolbox::inv_matrix_3x3(m_frame->rotation);
+	 const double* R = iR.val;
 	 const double* e = m_frame->epi_point.val;
-	 double c, w, ae[3], ar[3];
+	 double c, w, ae[3], ar[3], ar0[3];
 	 double Ae[9], Ar[9], Br[3];
 
 	 memset(Ae, 0, sizeof(Ae));
@@ -2556,7 +2567,8 @@ void Slam::calc_e_dr_of3() {
 	 memset(Br, 0, sizeof(Br));
  	 m0[2] = 1;
  	 m1[2] = 1;
-	 x00[2] = 1;
+	 x10[2] = 1;
+	 x0[2] = 1;
 	 x1[2] = 1;
 
 	for (int i = 0; i < total; i++) {
@@ -2565,14 +2577,16 @@ void Slam::calc_e_dr_of3() {
 		m0[1] = i / m_width - in.cy;
 		m1[0] = m0[0] + put[i][0];
 		m1[1] = m0[1] + put[i][1];
-		x00[0] = m0[0]*f1;
-		x00[1] = m0[1]*f1;
-		x0[0] = R[0]*x00[0]+R[1]*x00[1]+R[2]*x00[2];
-		x0[1] = R[3]*x00[0]+R[4]*x00[1]+R[5]*x00[2];
-		x0[2] = R[6]*x00[0]+R[7]*x00[1]+R[8]*x00[2];
-		x1[0] = m1[0]*f1;
-		x1[1] = m1[1]*f1;
+		x0[0] = m0[0]*f1;
+		x0[1] = m0[1]*f1;
+		x10[0] = m1[0]*f1;
+		x10[1] = m1[1]*f1;
+		x1[0] = R[0]*x10[0]+R[1]*x10[1]+R[2]*x10[2];
+		x1[1] = R[3]*x10[0]+R[4]*x10[1]+R[5]*x10[2];
+		x1[2] = R[6]*x10[0]+R[7]*x10[1]+R[8]*x10[2];
 
+		pdut[i][0] = x1[0]*in.f/x1[2]-m0[0];
+		pdut[i][1] = x1[1]*in.f/x1[2]-m0[1];
 
 		ae[0] = x0[1]*x1[2]-x0[2]*x1[1];
 		ae[1] = x0[2]*x1[0]-x0[0]*x1[2];
@@ -2580,6 +2594,7 @@ void Slam::calc_e_dr_of3() {
 
 		c = ae[0]*e[0]+ae[1]*e[1]+ae[2]*e[2];
 		w = exp(-c*c*Config::epi_sigma2_of3);
+		pw[i] = w;
 
 		Ae[0] += w*ae[0]*ae[0];
 		Ae[1] += w*ae[0]*ae[1];
@@ -2588,9 +2603,13 @@ void Slam::calc_e_dr_of3() {
 		Ae[5] += w*ae[1]*ae[2];
 		Ae[8] += w*ae[2]*ae[2];
 
-		ar[0] = ae[1]*e[2]-ae[2]*e[1];
-		ar[1] = ae[2]*e[0]-ae[0]*e[2];
-		ar[2] = ae[0]*e[1]-ae[1]*e[0];
+		ar0[0] = x1[1]*e[2]-x1[2]*e[1];
+		ar0[1] = x1[2]*e[0]-x1[0]*e[2];
+		ar0[2] = x1[0]*e[1]-x1[1]*e[0];
+
+		ar[0] = x0[1]*ar0[2]-x0[2]*ar0[1];
+		ar[1] = x0[2]*ar0[0]-x0[0]*ar0[2];
+		ar[2] = x0[0]*ar0[1]-x0[1]*ar0[0];
 
 		Ar[0] += w*ar[0]*ar[0];
 		Ar[1] += w*ar[0]*ar[1];
@@ -2599,9 +2618,9 @@ void Slam::calc_e_dr_of3() {
 		Ar[5] += w*ar[1]*ar[2];
 		Ar[8] += w*ar[2]*ar[2];
 
-		Br[0] += w*c*ar[0];
-		Br[1] += w*c*ar[1];
-		Br[2] += w*c*ar[2];
+		Br[0] -= w*c*ar[0];
+		Br[1] -= w*c*ar[1];
+		Br[2] -= w*c*ar[2];
 	}
 
 	Ae[3] = Ae[1];
@@ -2620,7 +2639,10 @@ void Slam::calc_e_dr_of3() {
 	Ar[8] += 0.1;
 
 
-	m_frame->epi_point = MatrixToolbox::min_eigen_vector_3x3(Ae);
+	if (!only_dr) {
+		m_frame->epi_point = MatrixToolbox::min_eigen_vector_3x3(Ae);	
+	}
+	
 	Vec9d iAr = MatrixToolbox::inv_matrix_3x3(Ar);
 	double dr[3] = {
 			iAr[0]*Br[0]+iAr[1]*Br[1]+iAr[2]*Br[2],
@@ -2629,6 +2651,7 @@ void Slam::calc_e_dr_of3() {
 
 	};
 	MatrixToolbox::update_rotation(m_frame->rotation, dr);
+	m_frame->rotation_warp(m_warp);
 		
 
 

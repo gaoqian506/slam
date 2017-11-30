@@ -131,7 +131,13 @@ void View::display() {
 		break;
 	case DisplayImage:
 		glColor3d(0.72, 0.38, 0.49);
-		draw_image(m_content->get_debug_image(m_display_index));
+		Image* weight = 0;
+		Image* image = m_content->get_debug_image(m_display_index, &weight);
+		if (image && image->channels() == 2) {
+			draw_field(image, weight);
+		}
+		else { draw_image(image); }
+		
 		//glColor3d(0.92, 0.56, 0.37);
 		//draw_optical_flow(m_content->get_optical_flow());
 		glColor3d(0.35, 0.92, 0.72);
@@ -364,11 +370,6 @@ void View::draw_content() {
 void View::draw_image(Image* image) {
 
 	if(!image) { return; }
-	if (image->channels() == 2) {
-		draw_field(image);
-		return;
-	}
-
 	//glScaled(10, 10, 10);
 
 	glMatrixMode(GL_PROJECTION);
@@ -413,7 +414,7 @@ void View::draw_image(Image* image) {
 
 }
 
-void View::draw_field(Image* field) {
+void View::draw_field(Image* field, Image* weight/* = NULL*/) {
 
 
 	if(!field) { return; }
@@ -432,12 +433,17 @@ void View::draw_field(Image* field) {
 
 	int skip = Config::field_skip, id;
 	Vec2f mv;
-	double m[2] = { -w*0.5+0.5, -h*0.5+0.5 };
+	double m[2] = { -w*0.5+0.5, -h*0.5+0.5 }, t;
 
 	for (int u = 0; u < w; u+=skip) {
 
 		for (int v = 0; v < h; v+=skip) {
 			mv = ((Vec2f*)field->data())[v*w+u];
+			if (weight) {
+				t = ((float*)weight->data())[v*w+u];
+			}
+			else { t = 1; }
+			glColor3d((1-t), t, 0);
 			glBegin(GL_LINES);
 			glVertex2d(u+m[0], v+m[1]);
 			glVertex2d(u+m[0]+mv[0], v+m[1]+mv[1]);
@@ -453,7 +459,7 @@ void View::draw_field(Image* field) {
 		mv = ((Vec2f*)field->data())[v*w+u];
 
 		glLineWidth(2);
-		glColor3d(1, 0, 0);
+		glColor3d(0, 0, 1);
 		glBegin(GL_LINES);
 		glVertex2d(u+m[0], v+m[1]);
 		glVertex2d(u+m[0]+mv[0], v+m[1]+mv[1]);

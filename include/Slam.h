@@ -24,7 +24,7 @@ public:
 	virtual int get_camera_count();
 	virtual Camera* get_current_frame();
 	virtual bool changed();
-	virtual Image* get_debug_image(const int& idx);
+	virtual Image* get_debug_image(const int& idx, Image** weight = 0);
 	virtual void push_manauly();
 	virtual void func_manualy(int idx);
 	virtual char* pixel_info(const Vec2d& u);
@@ -77,7 +77,7 @@ private:
 	void calc_du_of1();
 	void calc_du_of2();
 	void calc_du_of3();
-	void calc_e_dr_of3();
+	void calc_e_dr_of3(bool only_dr = false);
 	void calc_du_gof1();
 	void smooth_of_of1();
 	void smooth_of_of2();

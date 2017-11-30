@@ -34,7 +34,7 @@ public:
 	virtual int get_camera_count() = 0;
 	virtual Camera* get_current_frame() = 0;
 	virtual bool changed() = 0;
-	virtual Image* get_debug_image(const int& idx) = 0;
+	virtual Image* get_debug_image(const int& idx, Image** weight = 0) = 0;
 	virtual void push_manauly() = 0;
 	virtual void func_manualy(int idx) = 0;
 	virtual char* pixel_info(const Vec2d& u) = 0;

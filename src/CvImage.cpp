@@ -197,6 +197,17 @@ void CvImage::add(Image* right) {
 
 }
 
+void CvImage::warp(Vec9d H, Image*& out) {
+
+	if (out == NULL) {
+		out = new CvImage();
+	}
+	CvImage* cv_out = static_cast<CvImage*>(out);
+	cv::Mat M = cv::Mat(3, 3, CV_64F, H.val);
+	cv::warpPerspective(m_cv_mat, cv_out->m_cv_mat, M, m_cv_mat.size());
+
+}
+
 //float CvImage::sample(const float& a, const float& b) {
 
 	//assert(m_cv_mat.type() == CV_32F);

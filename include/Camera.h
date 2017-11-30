@@ -26,6 +26,8 @@ public:
 	
 	Vec3f unproject(const float& u, const float& v, const float& d);
 	Vec3f project(const Vec3f& pt);
+	void rotation_warp(Image*& out, bool inverse = true);
+
 
 	Vec3d epi_point;
 	Vec3d pos;

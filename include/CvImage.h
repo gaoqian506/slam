@@ -44,6 +44,7 @@ public:
 	virtual void* at(int idx);
 	virtual void merge(Image* other, Image*& out);
 	virtual void add(Image* right);
+	virtual void warp(Vec9d H, Image*& out);
 
 private:
 

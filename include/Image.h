@@ -2,7 +2,7 @@
 #ifndef __WW_IMAGE_HEADER__
 #define __WW_IMAGE_HEADER__
 
-
+#include "Vectors.h"
 
 namespace ww {
 
@@ -37,6 +37,7 @@ public:
 	virtual void* at(int idx) { return 0; }
 	virtual void merge(Image* other, Image*& out) {}
 	virtual void add(Image* right) {}
+	virtual void warp(Vec9d H, Image*& out) {}
 
 	//virtual float sample(const float& a, const float& b) { return 0; }
 	
