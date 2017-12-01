@@ -210,7 +210,7 @@ void Slam::push_manauly() {
 	if (image) { delete image; }
 	if (resized) { delete resized; }
 	
-	std::cout << "leave Slam::start" << std::endl;
+	//std::cout << "leave Slam::start" << std::endl;
 
 }
 
@@ -510,6 +510,14 @@ Image* Slam::get_optical_flow() {
 
 	return m_of;
 
+}
+
+void Slam::build() {
+
+	while()
+}
+void Slam::step(StepFlag flag/* = StepAll*/) {
+	
 }
 
 void Slam::initialize(Image* image) {

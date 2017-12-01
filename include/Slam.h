@@ -30,6 +30,9 @@ public:
 	virtual char* pixel_info(const Vec2d& u);
 	virtual Image* get_optical_flow();
 
+	virtual void build();
+	virtual void step(StepFlag flag = StepAll);
+
 
 private:
 

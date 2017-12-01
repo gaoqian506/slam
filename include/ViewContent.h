@@ -24,6 +24,14 @@ public:
 class ViewContent {
 
 public:
+
+	enum StepFlag {
+		StepNone = 0,
+		StepRead = 1,
+		StepOpticalFlow = 3,
+		StepAll = StepRead | StepOpticalFlow
+	};
+
 	ViewContent() : m_display_delegate(0) {
 		std::cout << "ViewContent::ViewContent" << std::endl;
 	}
@@ -39,7 +47,10 @@ public:
 	virtual void func_manualy(int idx) = 0;
 	virtual char* pixel_info(const Vec2d& u) = 0;
 	virtual Image* get_optical_flow() = 0;
-	
+
+	virtual void build() = 0;
+	virtual void step(StepFlag flag = StepAll) = 0;
+
 	void set_display_delegate(DisplayDelegate* dd) {
 		std::cout << "ViewContent::set_display_delegate" << std::endl;
 		m_display_delegate = dd;
