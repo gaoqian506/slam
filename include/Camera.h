@@ -42,6 +42,7 @@ public:
 	Image* depth;
 	Image* points;
 	Image* epi_line;
+	Image* depth_weight;
 	//Image* residual;
 };
 

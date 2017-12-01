@@ -19,6 +19,7 @@ Camera::Camera() : radius(20), movement(0) {
 	gradient[1] = NULL;
 	depth = NULL;
 	points = NULL;
+	depth_weight = NULL;
 	//residual = NULL;
 }
 

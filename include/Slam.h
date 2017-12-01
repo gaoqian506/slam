@@ -78,6 +78,9 @@ private:
 	void calc_du_of2();
 	void calc_du_of3();
 	void calc_e_dr_of3(bool only_dr = false);
+	void calc_t_of3();
+	void update_depth_of3();
+	void unproject_points_of3();
 	void calc_du_gof1();
 	void smooth_of_of1();
 	void smooth_of_of2();
@@ -109,6 +112,7 @@ private:
 	Image* m_grad_grad[4];	// {guu guv; gvu gvv }
 	Image* m_grad_residual;
 	Image* m_dut;
+	//Image* m_depth_weight;
 	bool m_changed;
 	char m_pixel_info[MAX_PIXEL_INFO];
 	int m_width;

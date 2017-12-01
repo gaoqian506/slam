@@ -196,8 +196,19 @@ struct Vec3d {
 		r *= d;
 		return r;
 	}
+
+	double dot(const Vec3d& r) {
+		return val[0]*r.val[0]+val[1]*r.val[1]+val[2]*r.val[2];
+	}
 	
-	double length2() { return val[0]*val[0]+val[1]*val[1]+val[2]*val[2]; }
+	double length2() { 
+		return val[0]*val[0]+val[1]*val[1]+val[2]*val[2]; 
+	}
+
+	double length() { 
+		return sqrt(val[0]*val[0]+val[1]*val[1]+val[2]*val[2]); 
+	}
+	
 
 	Vec3d& normalize() {
 	

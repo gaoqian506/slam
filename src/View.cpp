@@ -565,7 +565,7 @@ void View::draw_camera_instance(Camera* camera, bool with_points /*=true*/) {
 
 	std::cout << "View::draw_camera_instance" << std::endl;
 	if (!camera->gray) { return; }
-	if (Config::method = Config::Lsd3) {
+	if (Config::method == Config::Lsd3) {
 		GlToolbox::transform_to(camera->pos, camera->rotation, false);
 	}
 	else {

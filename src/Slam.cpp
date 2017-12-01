@@ -36,7 +36,9 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_weight = NULL;
 	m_of = NULL;
 	memset(m_grad_grad, 0, sizeof(m_grad_grad));
-	m_grad_residual = 0;
+	m_grad_residual = NULL;
+	m_dut = NULL;
+	//m_depth_weight = NULL;
 
 	m_pixel_info[0] = 0;
 
@@ -378,8 +380,8 @@ void Slam::func_manualy(int idx) {
 			smooth_of_of2();
 		}	
 		if (m_frame && Config::method == Config::Of3) {
-			calc_e_dr_of3(true);
-		}		
+			calc_t_of3();
+		}			
 		break;
 	case 4:
 		if (m_frame && Config::method == Config::Lsd) {
@@ -408,6 +410,10 @@ void Slam::func_manualy(int idx) {
 			prepare_residual_of2();
 			smooth_of_of2();
 		}	
+		if (m_frame && Config::method == Config::Of3) {
+			update_depth_of3();
+			unproject_points_of3();
+		}		
 		break;
 	case 5:
 		if (m_frame && Config::method == Config::Lsd2) {
@@ -450,7 +456,8 @@ char* Slam::pixel_info(const Vec2d& u) {
 		"grad res: %f, %f\n"
 		"grad: %f, %f\n"
 		"of: %f, %f\n"
-		"depth: %f\n"
+		"dof: %f, %f\n"
+		"depth: %f, %f\n"
 		"e: %f, %f, %f\n"
 		"t: %f, %f, %f\n"
 		"R: %f, %f, %f\n"
@@ -470,12 +477,15 @@ char* Slam::pixel_info(const Vec2d& u) {
 		m_key ? ((float*)m_key->gradient[1]->at(idx))[0] : 0,
 		m_of ? ((Vec2f*)m_of->data())[idx][0] : 0,
 		m_of ? ((Vec2f*)m_of->data())[idx][1] : 0,
+		m_dut ? ((Vec2f*)m_dut->data())[idx][0] : 0,
+		m_dut ? ((Vec2f*)m_dut->data())[idx][1] : 0,		
 		//pl ? pl[idx][0] : 0,
 		//pl ? pl[idx][1] : 0,
 		//pl ? pl[idx][2] : 0,
 		//((Vec2f*)m_gradient->at(idx))[0][0],
 		//((Vec2f*)m_gradient->at(idx))[0][1],
 		m_key ? *((float*)m_key->depth->at(idx)) : 0.0,
+		m_key ? *((float*)m_key->depth_weight->at(idx)) : 0.0,
 		m_frame ? m_frame->epi_point[0] : 0,
 		m_frame ? m_frame->epi_point[1] : 0,
 		m_frame ? m_frame->epi_point[2] : 0,
@@ -528,6 +538,7 @@ void Slam::initialize(Image* image) {
 	}
 	m_grad_residual = new CvImage(w, h, Image::Float32, 2);
 	m_dut = new CvImage(w, h, Image::Float32, 2);
+	//m_depth_weight = new CvImage(w, h, Image::Float32);
 }
 
 void Slam::push(Image* image) {
@@ -2652,9 +2663,148 @@ void Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 	};
 	MatrixToolbox::update_rotation(m_frame->rotation, dr);
 	m_frame->rotation_warp(m_warp);
-		
+}
+
+void Slam::calc_t_of3() {
+
+	std::cout << "Slam::calc_t_of3" << std::endl;
+
+	if (!m_key || !m_frame) { return; }
+
+	if (m_frame->epi_point.dot(m_frame->pos) < 0) {
+		m_frame->epi_point *= -1;
+	}
+
+	double l = m_frame->pos.length();
+	const double* e = m_frame->epi_point.val;
+
+	int total = m_width * m_height;
+	float* pw = (float*)m_weight->data();
+	Vec2f* pdut = (Vec2f*)m_dut->data();
+	float* pd = (float*)m_key->depth->data();
+
+	 Intrinsic in = m_key->intrinsic;
+	 double m0[3], m1[3];
+	 double d, du[2], du0[2], w, a[2], AL = 0, A = 0;
+	 double dl, dua;
+
+	float* piu1 = (float*)m_frame->gradient[0]->data();
+	float* piv1 = (float*)m_frame->gradient[1]->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+
+	
+
+	 m0[2] = 1;
+
+	for (int i = 0; i < total; i++) {
+
+		d = pd[i];
+
+		m0[0] = i % m_width - in.cx;
+		m0[1] = i / m_width - in.cy;
+		dl = d*l;
+		m1[0] = dl*in.f*e[0]+m0[0];
+		m1[1] = dl*in.f*e[1]+m0[1];
+		m1[2] = dl*e[2]+m0[2];
+		m1[0] /= m1[2];
+		m1[1] /= m1[2];
+
+		du0[0] = pdut[i][0];
+		du0[1] = pdut[i][1];
+		du[0] = du0[0]-(m1[0]-m0[0]);
+		du[1] = du0[1]-(m1[1]-m0[1]);
+
+		piu0[i] = m1[0]-m0[0];
+		piv0[i] = m1[1]-m0[1];
+		piu1[i] = du[0];
+		piv1[i] = du[1];
+
+		a[0] = d*(in.f*e[0]-m0[0]*e[2]);
+		a[1] = d*(in.f*e[1]-m0[0]*e[2]);
+
+		w = du0[0]*a[0]+du0[1]*a[1];
+		//if (w < 0) { w = 0; }
+		pw[i] = w;
+
+		dua = du[0]*a[0]+du[1]*a[1];
+
+		AL += w*dua;
+		A += w*(a[0]*a[0]+a[1]*a[1]);
+
+	}
+
+	l += AL/(A+0.001);
+	if (l < 0) { 
+		l *= -1; 
+		m_frame->epi_point *= -1;
+	}
+
+	m_frame->pos = m_frame->epi_point * l;
+
+}
+
+void Slam::update_depth_of3() {
 
 
+	std::cout << "Slam::update_depth_of3" << std::endl;
+
+	if (!m_key || !m_frame) { return; }
+
+	const double* t = m_frame->pos.val;
+
+	int total = m_width * m_height;
+	Vec2f* pdut = (Vec2f*)m_dut->data();
+	float* pwd = (float*)m_key->depth->data();
+	float* pdw = (float*)m_key->depth_weight->data();
+
+
+	 Intrinsic in = m_key->intrinsic;
+	 double wd, dw, m0[2], a[2];
+
+	for (int i = 0; i < total; i++) {
+
+		m0[0] = i % m_width - in.cx;
+		m0[1] = i / m_width - in.cy;
+		a[0] = in.f*t[0]-m0[0]*t[2];
+		a[1] = in.f*t[1]-m0[0]*t[2];
+
+		wd = pdut[i][0]*a[0]+pdut[i][1]*a[1];
+		dw = a[0]*a[0]+a[1]*a[1];
+
+		pwd[i] += wd;
+		pdw[i] += dw;
+	}
+}
+
+void Slam::unproject_points_of3() {
+
+	std::cout << "Slam::unproject_points_of3" << std::endl;
+
+	if (!m_key || !m_frame) { return; }
+
+	int total = m_width * m_height;
+	float* pwd = (float*)m_key->depth->data();
+	float* pdw = (float*)m_key->depth_weight->data();
+	Vec4f* px = (Vec4f*)m_key->points->data();
+
+	 Intrinsic in = m_key->intrinsic;
+	 double f1 = 1.0/in.f;
+	 Vec4f x;
+	 double wd, dw, m0[2];
+
+	for (int i = 0; i < total; i++) {
+
+		m0[0] = i % m_width - in.cx;
+		m0[1] = i / m_width - in.cy;
+		dw = pdw[i];
+		x[0] = dw * m0[0] * f1;
+		x[1] = dw * m0[1] * f1;
+		x[2] = dw;
+		x[3] = pwd[i];
+		px[i] = x;
+
+	}
 
 }
 
@@ -2854,10 +3004,13 @@ void Slam::create_keyframe(Image* image) {
 	//image->gray(m_key->gray);
 
 	m_key->depth = new CvImage(m_width, m_height, Image::Float32);
+	m_key->depth_weight = new CvImage(m_width, m_height, Image::Float32);
 	if (pre_key) {
 		pre_key->depth->set(0);
 	}
 	m_key->depth->set(0.1);
+	m_key->depth_weight->set(10);
+
 
 	m_key->gradient[0]->sobel_x(m_grad_grad[0]);
 	m_key->gradient[0]->sobel_y(m_grad_grad[1]);
