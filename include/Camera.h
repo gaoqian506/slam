@@ -43,7 +43,16 @@ public:
 	Image* points;
 	Image* epi_line;
 	Image* depth_weight;
-	//Image* residual;
+
+	Image* mask;
+	Image* residual;
+	Image* warp_gradient;
+	Image* warp;
+	Image* of_weight;
+	Image* epi_weight;
+	Image* optical_flow;
+	//Image* m_grad_residual;
+	Image* dut;	
 };
 
 

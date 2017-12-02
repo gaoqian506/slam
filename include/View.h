@@ -60,6 +60,7 @@ private:
 	pthread_t m_thread_id;
 	DisplayAspect m_display_aspect;
 	int m_display_index;
+	int m_key_index;
 	Vec3d m_trans_2d;
 	unsigned int m_gl_texture;
 	Vec2d m_pixel_pos;

@@ -24,14 +24,12 @@ public:
 	virtual int get_camera_count();
 	virtual Camera* get_current_frame();
 	virtual bool changed();
-	virtual Image* get_debug_image(const int& idx, Image** weight = 0);
+	virtual Image* get_debug_image(int iid, int kid, Image** weight = 0);
 	virtual void push_manauly();
 	virtual void func_manualy(int idx);
-	virtual char* pixel_info(const Vec2d& u);
+	virtual char* pixel_info(const Vec2d& u, int kid);
 	virtual Image* get_optical_flow();
-
-	virtual void build();
-	virtual void step(StepFlag flag = StepAll);
+	virtual void build(BuildFlag flag = BuildAll);
 
 
 private:
@@ -79,9 +77,9 @@ private:
 	Vec3d calc_e_epi2();
 	void calc_du_of1();
 	void calc_du_of2();
-	void calc_du_of3();
-	void calc_e_dr_of3(bool only_dr = false);
-	void calc_t_of3();
+	bool calc_du_of3();
+	bool calc_e_dr_of3(bool only_dr = false);
+	bool calc_t_of3();
 	void update_depth_of3();
 	void unproject_points_of3();
 	void calc_du_gof1();
@@ -92,6 +90,14 @@ private:
 	void update_depth();
 	void update_depth_lsd2();
 	void smooth_depth_lsd2();
+
+	void build_of3(BuildFlag flag);
+	void build_of4(BuildFlag flag);
+	void prepare_du_of4();
+	bool calc_du_of4();
+	bool calc_e_dr_of4();
+
+
 
 
 	VideoSource* m_source;

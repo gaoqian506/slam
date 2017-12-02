@@ -20,6 +20,16 @@ Camera::Camera() : radius(20), movement(0) {
 	depth = NULL;
 	points = NULL;
 	depth_weight = NULL;
+
+	mask = NULL;
+	residual = NULL;
+	warp_gradient = NULL;
+	warp = NULL;
+	of_weight = NULL;
+	epi_weight = NULL;
+	optical_flow = NULL;
+	//m_grad_residual = NULL;
+	dut = NULL;
 	//residual = NULL;
 }
 

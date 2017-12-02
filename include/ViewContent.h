@@ -25,11 +25,16 @@ class ViewContent {
 
 public:
 
-	enum StepFlag {
-		StepNone = 0,
-		StepRead = 1,
-		StepOpticalFlow = 3,
-		StepAll = StepRead | StepOpticalFlow
+	enum BuildFlag {
+		BuildReadFrame = 1,
+		BuildOpticalFlow = 2,
+		BuildEpipolar = 4,
+		BuildTranslate = 8,
+		BuildDepth = 16,
+		BuildKeyframe = 32,
+		BuildIterate = 64,
+		BuildSequence = 128,
+		BuildAll = 256-1,
 	};
 
 	ViewContent() : m_display_delegate(0) {
@@ -42,14 +47,14 @@ public:
 	virtual int get_camera_count() = 0;
 	virtual Camera* get_current_frame() = 0;
 	virtual bool changed() = 0;
-	virtual Image* get_debug_image(const int& idx, Image** weight = 0) = 0;
+	virtual Image* get_debug_image(int iid, int kid, Image** weight = 0) = 0;
 	virtual void push_manauly() = 0;
 	virtual void func_manualy(int idx) = 0;
-	virtual char* pixel_info(const Vec2d& u) = 0;
+	virtual char* pixel_info(const Vec2d& u, int kid) = 0;
 	virtual Image* get_optical_flow() = 0;
 
-	virtual void build() = 0;
-	virtual void step(StepFlag flag = StepAll) = 0;
+	virtual void build(BuildFlag flag = BuildAll) = 0;
+
 
 	void set_display_delegate(DisplayDelegate* dd) {
 		std::cout << "ViewContent::set_display_delegate" << std::endl;

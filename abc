@@ -1,0 +1,398 @@
+
+
+
+		//m_content->push_manauly();
+		// m_content->build((ViewContent::BuildFlag)(
+		// 	ViewContent::BuildAll - 
+		// 	//ViewContent::BuildIterate -
+		// 	ViewContent::BuildSequence
+		// ));
+
+
+
+
+
+/***************************
+
+
+
+	const Intrinsic& intri0 = m_key->intrinsic;
+	//float invf0 = 1 / m_key->intrinsic.f;
+	const Intrinsic& intri1 = m_frame->intrinsic;
+	
+	const Vec9d& R = m_frame->rotation;
+
+	int w = image->width();
+	int h = image->height();
+	m_key = new Camera();
+	SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
+	
+	image->copy_to(m_key->original);
+	image->gray(m_key->gray);
+	m_key->depth = new CvImage(w, h, Image::Float32);
+
+	m_key->depth->set(0.1);
+	m_key->points = new CvImage(w, h, Image::Float32, 4);
+
+	m_keyframes.push_back(m_key);
+	m_cameras[m_camera_count] = m_key;
+
+	m_camera_count++;
+
+
+	if (m_key) {
+		if (!m_frame) {
+			int w = image->width();
+			int h = image->height();
+			m_frame = new Camera();
+			SpaceToolbox::init_intrinsic(m_frame->intrinsic, 45, w, h);
+		
+			m_frame->points = new CvImage(w, h, Image::Float32, 4);
+		}
+		image->gray(m_frame->gray);
+		m_frame->gray->sobel_x(m_frame->gradient[0]);
+		m_frame->gray->sobel_y(m_frame->gradient[1]);
+
+	}
+
+			j = i + offset[k];
+			//if (j < 0) { continue; }
+			u2 = j % m_width;
+			v2 = j / m_width;
+
+
+	if (m_key == NULL) {
+	
+		int w = image->width();
+		int h = image->height();
+		m_key = new Camera();
+		SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
+		
+		image->copy_to(m_key->original);
+		image->gray(m_key->gray);
+		m_key->depth = new CvImage(w, h, Image::Float32);
+
+		m_key->depth->set(0.1);
+		m_key->points = new CvImage(w, h, Image::Float32, 4);
+
+		m_keyframes.push_back(m_key);
+		m_cameras[m_camera_count] = m_key;
+	
+		m_camera_count++;
+	}
+	else {
+
+		Vec2f* pGrad = (Vec2f*)m_gradient->data();
+		float* pDg = (float*)m_residual->data();
+		float* pDepth = (float*)m_depth->data();
+		Vec4f* pPts = (Vec4f*)m_frame->points->data();
+		unsigned char* pMask = (unsigned char*)m_mask->data();
+		float* p_kd = (float*)m_key->depth->data();
+		const Vec3d& t = m_frame->pos;
+		int total = m_width * m_height;
+		double a[3];
+		double a2, temp;
+		for (int i = 0; i < total; i++) {
+			if (!pMask[i]) { continue; }
+			temp = m_frame->intrinsic.f*pDepth[i]/p_kd[i];
+			a[0] = pGrad[i][0]*temp;
+			a[1] = pGrad[i][1]*temp;
+			a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
+			a2 = a[0]*t[0]+a[1]*t[1]+a[2]*t[2];
+			p_kd[i] += a2*pDg[i] / (100 + a2*a2);
+		}
+	}
+	
+
+
+
+	cv::minMaxIdx(image, &min, &max);
+	scale = 1./(max-min);
+	_image.convertTo(image, 
+		CV_32FC(image.channels()), scale, -min/(max-min));		
+
+	
+	//MatrixToolbox::rectify_rotation(m_frame->rotation);
+
+		
+		
+		//m_frame->gradient[0]->save("aaa.jpg");
+		//m_frame->gradient[1]->save("bbb.jpg");
+		//m_frame->gray->subtract(m_key->gray, m_frame->residual);
+		
+		
+	
+		// unprojects each pixel for calc delta
+		int width = m_key->gray->width();
+		int height = m_key->gray->height();
+		
+		
+		int total = width * height;
+		const Intrinsic& intri = m_key->intrinsic;
+		float invf0 = 1 / intri.f;
+		int u, v;
+		Vec4f p;
+		float* p_depth = (float*)m_key->depth->data();
+		Vec4f* p_pts = (Vec4f*)m_key->points->data();
+
+		for (int i = 0; i < total; i++) {
+	
+			u = i % width;
+			v = i / width;
+		
+			p[0] = (u-intri.cx)*invf0;
+			p[1] = (v-intri.cy)*invf0;
+			p[2] = 1;
+			p[3] = p_depth[i];
+		
+			p_pts[i] = p;
+		}
+
+
+		
+	
+	if (m_source->read(image)) {
+		image->resize(resized);
+		initialize(resized);
+	}
+
+
+		//if (delta_t.length2() < 0.0001) { break; }
+		break;
+
+		//image->convert_to(m_key->depth, Image::Float32);
+				
+		//memset(m_key->pos, 0, sizeof(m_key->pos));
+		//m_key->image = image;
+		//m_key->depth = default_depth; 
+
+	short* pGx = (short*)m_frame->gradient[0]->data();
+	short* pGy = (short*)m_frame->gradient[1]->data();
+	short* pDg = (short*)m_frame->residual->data();
+	float* pIz = (float*)m_key->depth->data();
+	
+
+	if (m_camera_count == 1) {
+	
+		m_cameras[m_camera_count] = m_frame;
+		m_camera_count++;
+	}
+		
+			p_grad[i][0] = m_frame->gradient[0]->sample(m[0], m[1]);
+			p_grad[i][1] = m_frame->gradient[1]->sample(m[0], m[1]);
+			
+			p_dg[i] = p_gkey[i] - m_frame->gray->sample(m[0], m[1]);
+
+m_frame->gray->sample(m[0], m[1]);
+
+	m_mask->set(255);
+	//m_mask->reset(width, height, Image::UnsignedChar);
+
+	unsigned char* pGray = (unsigned char*)m_frame->gray->data();
+
+
+	return Vec3d();
+	
+	//int width = image->width;
+	//int height = image->height;
+	
+	//u = i % width;
+	//v = i / width;
+	
+	
+	
+	
+	//foreach(pixel) {
+	
+		// calc a;
+		// calc b;
+		// calc w;
+		// A += w * a * a';
+		// B += w * b;
+	//}
+	//return inv(A) * B;
+	
+	return Vec3d();
+
+
+#include <unistd.h>
+		//sleep(10);
+
+void Slam::tick() {
+
+	std::cout << "Slam::tick" << std::endl;
+
+
+}
+
+
+	Camera* camera1 = new Camera();
+	camera1->pos[0] = 0;
+	camera1->pos[1] = 0;
+	camera1->pos[2] = 0;
+	
+	Camera* camera2 = new Camera();
+	camera2->pos[0] = 100;
+	camera2->pos[1] = 100;
+	camera2->pos[2] = 100;
+	
+	m_keyframes.push_back(camera1);
+	m_keyframes.push_back(camera2);
+	
+	m_cameras[0] = camera1;
+	m_cameras[1] = camera2;
+	
+	m_camera_count = 2;
+
+
+
+#include <stdio.h>
+#include <stdio.h>
+
+*********************************/
+
+
+
+
+	if (Config::method == Of3) {
+		build_of3();
+	}
+	else if (Config::method == Of4) {
+		build_of4();
+	}
+
+
+void Slam::step(StepFlag flag/* = StepAll*/) {
+	
+}
+
+
+	virtual void step(StepFlag flag = StepAll);
+	virtual void step(StepFlag flag = StepAll) = 0;
+
+
+	virtual void read_frame() = 0;
+	virtual void build() = 0;
+	virtual void step() = 0;
+	
+
+	virtual void read_frame();
+	virtual void build();
+	virtual void step();
+
+void Slam::read_frame() {
+
+
+	std::cout << "Slam::read_frame" << std::endl;
+
+	Image* image = NULL;
+	Image* resized = NULL;
+	if(m_source->read(image)) {
+		image->resize(resized);
+		initialize(resized);
+		replace_frame(resized);
+	}
+	if (image) { delete image; }
+	if (resized) { delete resized; }
+
+}
+
+void Slam::build() {
+
+}
+
+void Slam::step() {
+
+}
+
+
+
+0.00047904194551971183	0.99452903207104948		-0.10445944134751967
+0.030428648682743441	0.10439658562572		0.99407014352561363
+0.99953682666430876		-0.0036547609378968881		-0.030212164178195087
+
+
+0.75, -0.75, -0.116497561	21 9
+1, 0, 0.129441738			22 9
+1, 0, 0.116497561			23 9
+0.25, 0.75, 0.220050961		33 9
+
+-0, -1, -0.28477183			21 10
+-0, 1, 0.28477183			33 10
+
+-0, -1, -0.271827638		21 11
+-0, 1, 0.271827638			33 11
+
+-0, -1, -0.258883476		21 12
+-0, 1, 0.258883476			33 12
+
+-0, -1, -0.245939299		21 13
+-0, 1, 0.245939299			33 13
+
+-0, -1, -0.232995123		21 14
+-0, 1, 0.232995123			33 14
+
+-0, -1, -0.220050961		21 15
+-0, 1, 0.220050961			33 15
+
+-0, -1, -0.207106784		21 16
+-0, 1, 0.207106784			33 16
+
+-0, -1, -0.194162607		21 17
+-0, 1, 0.194162607			33 17
+
+-0, -1, -0.18121843			21 18
+-0, 1, 0.18121843			33 17
+
+-0, -1, -0.168274254		21 19
+-0, 1, 0.168274254			33 19
+
+-0, -1, -0.155330092		21 20
+-0, 1, 0.155330092			33 20
+
+-0.75, -0.75, -0.213578865	21 21
+-1, 0, -0.129441738			22 21
+-1, 0, -0.116497561			23 21
+-0.25, 0.75, 0.11002548		33 21
+
+
+
+
+
+
+--------------------u
+0.00011543112911504532 0.99097710543201478    -0.13403120228230403
+0.99999791864976828    0.00038741102398295743 -0.0020031497272539238
+0.0020370006837826969 -0.13403069209059529     0.99097508758087882
+
+
+----------------------vt-------------------
+ 0.00011543112911537083 0.99999791864976817     0.0020370006837827402
+-0.99097710543201478    0.00038741102398194051 -0.13403069209059532
+-0.13403120228230403   -0.0020031497272539234   0.99097508758087871
+
+
+
+(gdb) x/9fg svd.u.data
+0xafa500:	0.00011543112911504532	-0.99097710543201478
+0xafa510:	-0.13403120228230403	0.99999791864976828
+0xafa520:	0.00038741102398295743	-0.0020031497272539238
+0xafa530:	0.0020370006837826969	-0.13403069209059529
+0xafa540:	0.99097508758087882
+
+
+(gdb) x/9fg svd.vt.data
+0xafa140:	0.00011543112911537083	0.99999791864976817
+0xafa150:	0.0020370006837827402	-0.99097710543201478
+0xafa160:	0.00038741102398194051	-0.13403069209059532
+0xafa170:	-0.13403120228230403	-0.0020031497272539234
+0xafa180:	0.99097508758087871
+
+
+(gdb) x/9fg svd.w.data
+0x9cf260:	0.010807123924141982	0.0034913122732963915
+0x9cf270:	0.00034598942193630252	2.3176438028923198e-310
+0x9cf280:	3.1620201333839779e-322	1.4278497164812025e-321
+0x9cf290:	2.3178011315328348e-310	2.3177869191898742e-310
+0x9cf2a0:	7.9050503334599447e-323
+

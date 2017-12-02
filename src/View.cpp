@@ -82,6 +82,7 @@ View::View(ViewContent* vc) {
 	g_host = this;
 	m_display_aspect = DisplayImage;
 	m_display_index = 0;
+	m_key_index = 0;
 	m_trans_2d[0] = 1;
 
 	glGenTextures(1, &m_gl_texture);
@@ -127,12 +128,13 @@ void View::display() {
 	case DisplaySpace:
 		draw_content();
 		glColor3d(0.35, 0.92, 0.72);
-		print_text(m_content->pixel_info(m_pixel_pos), 5, 15);
+		print_text(m_content->pixel_info(m_pixel_pos, m_key_index), 5, 15);
 		break;
 	case DisplayImage:
 		glColor3d(0.72, 0.38, 0.49);
 		Image* weight = 0;
-		Image* image = m_content->get_debug_image(m_display_index, &weight);
+		Image* image = m_content->get_debug_image(
+			m_display_index, m_key_index, &weight);
 		if (image && image->channels() == 2) {
 			draw_field(image, weight);
 		}
@@ -141,7 +143,7 @@ void View::display() {
 		//glColor3d(0.92, 0.56, 0.37);
 		//draw_optical_flow(m_content->get_optical_flow());
 		glColor3d(0.35, 0.92, 0.72);
-		print_text(m_content->pixel_info(m_pixel_pos), 5, 15);
+		print_text(m_content->pixel_info(m_pixel_pos, m_key_index), 5, 15);
 		break;
 	}
 	
@@ -189,7 +191,19 @@ void View::keyboard(unsigned char key,int x,int y) {
 		glutPostRedisplay();
 		break;
 	case 32:	// space
-		MatrixToolbox::identity(m_view_matrix);
+		if (m_display_aspect == DisplaySpace) {
+			MatrixToolbox::identity(m_view_matrix);
+		}
+		else {
+		m_content->build((ViewContent::BuildFlag)(
+			ViewContent::BuildReadFrame + 
+			ViewContent::BuildOpticalFlow +
+			ViewContent::BuildKeyframe +
+			ViewContent::BuildIterate +
+			ViewContent::BuildSequence
+		));
+		}	
+		
 		break;
 	case 'b':	// key for break
 		key = 'b';
@@ -202,15 +216,36 @@ void View::special(int key,int x,int y) {
 	double dist = 0.1;
 	switch(key) {
 	case GLUT_KEY_F1:
-		m_content->push_manauly();
+
+		m_content->build((ViewContent::BuildFlag)(
+			ViewContent::BuildReadFrame + 
+			//ViewContent::BuildOpticalFlow +
+			//ViewContent::BuildEpipolar +
+			ViewContent::BuildKeyframe
+			//ViewContent::BuildIterate
+		));
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_F2:
-		m_content->func_manualy(1);
+		//m_content->func_manualy(1);
+		m_content->build((ViewContent::BuildFlag)(
+			//ViewContent::BuildReadFrame + 
+			ViewContent::BuildOpticalFlow
+			//ViewContent::BuildEpipolar +
+			//ViewContent::BuildKeyframe +
+			//ViewContent::BuildIterate
+		));	
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_F3:
-		m_content->func_manualy(2);
+		//m_content->func_manualy(2);
+		m_content->build((ViewContent::BuildFlag)(
+			//ViewContent::BuildReadFrame + 
+			//ViewContent::BuildOpticalFlow
+			ViewContent::BuildEpipolar
+			//ViewContent::BuildKeyframe +
+			//ViewContent::BuildIterate
+		));			
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_F4:
@@ -226,7 +261,7 @@ void View::special(int key,int x,int y) {
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_F10:
-		m_content->func_manualy(9);
+		m_content->build(ViewContent::BuildReadFrame);
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_UP:
@@ -675,6 +710,7 @@ void View::start_content() {
 void View::display_with(ViewContent* cv) {
 
 	std::cout << "View::display_with" << std::endl;
+	display();
 	//glutPostRedisplay();
 	
 

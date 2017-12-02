@@ -102,60 +102,64 @@ bool Slam::changed() {
 	return m_changed;
 }
 
-Image* Slam::get_debug_image(const int& idx, Image** weight /* = 0 */) {
+Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 
 	Image *which1 = NULL, *which2 = NULL;
+	Camera* key = NULL;
+	if (kid < m_keyframes.size()) {
+		key = m_cameras[kid];
+	}
 
-	if (idx == 0 && m_frame) {
+	if (iid == 0 && m_frame) {
 		which1 = m_frame->gray;
 		m_image_name = "current gray(1)";
 	}
-	else if (idx == 1) {
-		which1 = m_warp;
+	else if (iid == 1) {
+		which1 = key ? key->warp : m_warp;
 		m_image_name = "warp(2)";
 	}
-	else if (idx == 2 && m_key) {
-		which1 = m_key->gray;
+	else if (iid == 2 && key) {
+		which1 = key->gray;
 		m_image_name = "key gray(3)";
 	}
-	else if (idx == 3) {
-		which1 = m_residual;
+	else if (iid == 3) {
+		which1 = key ? key->residual : m_residual;
 		m_image_name = "residual(4)";
 	}
-	else if (idx == 4 && m_key) {
-		which1 = m_key->gradient[0];
-		which2 = m_key->gradient[1];
-		if (weight) { *weight = m_weight; }
+	else if (iid == 4 && key) {
+		which1 = key->gradient[0];
+		which2 = key->gradient[1];
+		if (weight) { *weight = key ? key->of_weight : NULL; }
 		m_image_name = "key grad(5)";
 	}
-	else if (idx == 5 && m_frame) {
+	else if (iid == 5 && m_frame) {
 		which1 = m_frame->gradient[0];
 		which2 = m_frame->gradient[1];
-		if (weight) { *weight = m_weight; }
+		if (weight) { *weight = key ? key->of_weight : NULL; }
 		m_image_name = "frame grad(6)";
 	}
-	else if (idx == 6) {
-		which1 = m_gradient;
-		if (weight) { *weight = m_weight; }
+	else if (iid == 6) {
+		which1 = key ? key->warp_gradient : m_gradient;
+		if (weight) { *weight = key ? key->of_weight : NULL; }
 		m_image_name = "warp gradient(7)";
 	}		
-	else if (idx == 7) {
-		which1 = m_of;
-		if (weight) { *weight = m_weight; }
+	else if (iid == 7) {
+		which1 = key ? key->optical_flow : m_of;
+		if (weight) { *weight = key ? key->of_weight : NULL; }
 		m_image_name = "optical flow(8)";
 	}
-	else if (idx == 8) {
-		which1 = m_dut;
-		if (weight) { *weight = m_weight; }
+	else if (iid == 8) {
+		which1 = key ? key->dut : m_dut;
+		if (weight) { *weight = key ? key->epi_weight : NULL; }
 		m_image_name = "dut(9)";
 	}
-	else if (idx == 9) {
-		which1 = m_weight;
-		m_image_name = "weight(10)";
+	else if (iid == 9) {
+		which1 = key ? key->of_weight : m_weight;
+		m_image_name = "of weight(10)";
 	}	
 
-	else if (idx == 10) {
-		which1 = m_mask;
+	else if (iid == 10) {
+		which1 = key ? key->mask : m_mask;
 		m_image_name = "mask(11)";
 	}
 	else {
@@ -439,11 +443,16 @@ void Slam::func_manualy(int idx) {
 }
 
 
-char* Slam::pixel_info(const Vec2d& u) {
+char* Slam::pixel_info(const Vec2d& u, int kid) {
 	
 	int idx = 0;
 	if (u[0] >= 0 && u[0] < m_width && u[1] >= 0 && u[1] < m_height) {
 		idx = ((int)u[1]) * m_width + ((int)u[0]);
+	}
+
+	Camera* key = NULL;
+	if (kid < m_keyframes.size()) {
+		key = m_cameras[kid];
 	}
 
 	Vec3f* pl = m_epi_line ? (Vec3f*)m_epi_line->data() : NULL;
@@ -452,7 +461,8 @@ char* Slam::pixel_info(const Vec2d& u) {
 		"active: %s\n"
 		"pos:%f, %f\n"
 		"key:%f cur:%f\n"
-		"res:%f weight:%f mask:%d\n"
+		"res:%f\n"
+		"of weight:%f epi_weight:%f mask:%d\n"
 		"grad res: %f, %f\n"
 		"grad: %f, %f\n"
 		"of: %f, %f\n"
@@ -468,17 +478,18 @@ char* Slam::pixel_info(const Vec2d& u) {
 		u[0], u[1],
 		m_key ? *((float*)m_key->gray->at(idx)) : 0.0,
 		m_frame ? *((float*)m_frame->gray->at(idx)) : 0.0,
-		m_residual ? *((float*)m_residual->at(idx)) : 0,
-		m_weight ? *((float*)m_weight->at(idx)) : 0,
-		m_mask ? *((unsigned char*)m_mask->at(idx)) : 0,
+		key ? *((float*)key->residual->at(idx)) : 0,
+		key ? *((float*)key->of_weight->at(idx)) : 0,
+		key ? *((float*)key->epi_weight->at(idx)) : 0,
+		key ? *((unsigned char*)key->mask->at(idx)) : 0,
 		m_grad_residual ? ((Vec2f*)m_grad_residual->data())[idx][0] : 0,
 		m_grad_residual ? ((Vec2f*)m_grad_residual->data())[idx][1] : 0,
 		m_key ? ((float*)m_key->gradient[0]->at(idx))[0] : 0,
 		m_key ? ((float*)m_key->gradient[1]->at(idx))[0] : 0,
-		m_of ? ((Vec2f*)m_of->data())[idx][0] : 0,
-		m_of ? ((Vec2f*)m_of->data())[idx][1] : 0,
-		m_dut ? ((Vec2f*)m_dut->data())[idx][0] : 0,
-		m_dut ? ((Vec2f*)m_dut->data())[idx][1] : 0,		
+		key ? ((Vec2f*)key->optical_flow->data())[idx][0] : 0,
+		key ? ((Vec2f*)key->optical_flow->data())[idx][1] : 0,
+		key ? ((Vec2f*)key->dut->data())[idx][0] : 0,
+		key ? ((Vec2f*)key->dut->data())[idx][1] : 0,		
 		//pl ? pl[idx][0] : 0,
 		//pl ? pl[idx][1] : 0,
 		//pl ? pl[idx][2] : 0,
@@ -512,12 +523,18 @@ Image* Slam::get_optical_flow() {
 
 }
 
-void Slam::build() {
+void Slam::build(BuildFlag flag/* = BuildAll*/) {
 
-	while()
-}
-void Slam::step(StepFlag flag/* = StepAll*/) {
-	
+	switch(Config::method) {
+
+	case Config::Of3:
+		build_of3(flag);
+		break;
+	case Config::Of4:
+		build_of4(flag);
+		break;
+	}
+
 }
 
 void Slam::initialize(Image* image) {
@@ -2439,12 +2456,12 @@ void Slam::calc_du_of2() {
 
 }
 
-void Slam::calc_du_of3() {
+bool Slam::calc_du_of3() {
 
 
 	std::cout << "Slam::calc_du_of3" << std::endl;
 
-	if (!m_key || !m_frame) { return; }
+	if (!m_key || !m_frame) { return true; }
 	int total = m_width * m_height;
 	float* pwit = (float*)m_residual->data();
 	Vec2f* pdut = (Vec2f*)m_dut->data();
@@ -2553,20 +2570,23 @@ void Slam::calc_du_of3() {
 		iA[2] = -A[1]*idet;
 		iA[3] = A[0] *idet;
 
-
 		pdut[i][0] = -(iA[0]*B[0]+iA[1]*B[1]);
 		pdut[i][1] = -(iA[2]*B[0]+iA[3]*B[1]);
 
 	}
 
+	//return is ok?
+	return false;
+
+
 }
 
-void Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
+bool Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 
 
 	std::cout << "Slam::calc_e_dr_of3" << std::endl;
 
-	if (!m_key || !m_frame) { return; }
+	if (!m_key || !m_frame) { return true; }
 	int total = m_width * m_height;
 	Vec2f* put = (Vec2f*)m_of->data();
 	float* pw = (float*)m_weight->data();
@@ -2671,13 +2691,15 @@ void Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 	};
 	MatrixToolbox::update_rotation(m_frame->rotation, dr);
 	m_frame->rotation_warp(m_warp);
+
+	return true;
 }
 
-void Slam::calc_t_of3() {
+bool Slam::calc_t_of3() {
 
 	std::cout << "Slam::calc_t_of3" << std::endl;
 
-	if (!m_key || !m_frame) { return; }
+	if (!m_key || !m_frame) { return true; }
 
 	if (m_frame->epi_point.dot(m_frame->pos) < 0) {
 		m_frame->epi_point *= -1;
@@ -2749,6 +2771,8 @@ void Slam::calc_t_of3() {
 	}
 
 	m_frame->pos = m_frame->epi_point * l;
+
+	return true;
 
 }
 
@@ -3013,9 +3037,19 @@ void Slam::create_keyframe(Image* image) {
 
 	m_key->depth = new CvImage(m_width, m_height, Image::Float32);
 	m_key->depth_weight = new CvImage(m_width, m_height, Image::Float32);
-	if (pre_key) {
-		pre_key->depth->set(0);
-	}
+
+	m_key->mask = new CvImage(m_width, m_height, Image::UByte);
+	m_key->residual = new CvImage(m_width, m_height, Image::Float32);
+	m_key->warp_gradient = new CvImage(m_width, m_height, Image::Float32, 2);
+	m_key->warp = new CvImage(m_width, m_height, Image::Float32);
+	m_key->of_weight = new CvImage(m_width, m_height, Image::Float32);
+	m_key->epi_weight = new CvImage(m_width, m_height, Image::Float32);
+	m_key->optical_flow = new CvImage(m_width, m_height, Image::Float32, 2);
+	m_key->dut = new CvImage(m_width, m_height, Image::Float32, 2);
+
+	//if (pre_key) {
+	//	pre_key->depth->set(0);
+	//}
 	m_key->depth->set(0.1);
 	m_key->depth_weight->set(10);
 
@@ -3169,247 +3203,413 @@ void Slam::smooth_depth_lsd2() {
 	}
 }
 
-} // namespace
+void Slam::build_of3(BuildFlag flag) {
 
-
-
-
-/***************************
-
-
-
-	const Intrinsic& intri0 = m_key->intrinsic;
-	//float invf0 = 1 / m_key->intrinsic.f;
-	const Intrinsic& intri1 = m_frame->intrinsic;
-	
-	const Vec9d& R = m_frame->rotation;
-
-	int w = image->width();
-	int h = image->height();
-	m_key = new Camera();
-	SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
-	
-	image->copy_to(m_key->original);
-	image->gray(m_key->gray);
-	m_key->depth = new CvImage(w, h, Image::Float32);
-
-	m_key->depth->set(0.1);
-	m_key->points = new CvImage(w, h, Image::Float32, 4);
-
-	m_keyframes.push_back(m_key);
-	m_cameras[m_camera_count] = m_key;
-
-	m_camera_count++;
-
-
-	if (m_key) {
-		if (!m_frame) {
-			int w = image->width();
-			int h = image->height();
-			m_frame = new Camera();
-			SpaceToolbox::init_intrinsic(m_frame->intrinsic, 45, w, h);
-		
-			m_frame->points = new CvImage(w, h, Image::Float32, 4);
+	Image* image = NULL;
+	Image* resized = NULL;
+	int times = 0;
+	int steps = 0;
+	bool ok;
+	while(true) {
+		if ((flag & BuildReadFrame) && m_source->read(image)) {
+			image->resize(resized);
+			initialize(resized);
+			preprocess(resized);
 		}
-		image->gray(m_frame->gray);
-		m_frame->gray->sobel_x(m_frame->gradient[0]);
-		m_frame->gray->sobel_y(m_frame->gradient[1]);
-
-	}
-
-			j = i + offset[k];
-			//if (j < 0) { continue; }
-			u2 = j % m_width;
-			v2 = j / m_width;
-
-
-	if (m_key == NULL) {
-	
-		int w = image->width();
-		int h = image->height();
-		m_key = new Camera();
-		SpaceToolbox::init_intrinsic(m_key->intrinsic, 45, w, h);
-		
-		image->copy_to(m_key->original);
-		image->gray(m_key->gray);
-		m_key->depth = new CvImage(w, h, Image::Float32);
-
-		m_key->depth->set(0.1);
-		m_key->points = new CvImage(w, h, Image::Float32, 4);
-
-		m_keyframes.push_back(m_key);
-		m_cameras[m_camera_count] = m_key;
-	
-		m_camera_count++;
-	}
-	else {
-
-		Vec2f* pGrad = (Vec2f*)m_gradient->data();
-		float* pDg = (float*)m_residual->data();
-		float* pDepth = (float*)m_depth->data();
-		Vec4f* pPts = (Vec4f*)m_frame->points->data();
-		unsigned char* pMask = (unsigned char*)m_mask->data();
-		float* p_kd = (float*)m_key->depth->data();
-		const Vec3d& t = m_frame->pos;
-		int total = m_width * m_height;
-		double a[3];
-		double a2, temp;
-		for (int i = 0; i < total; i++) {
-			if (!pMask[i]) { continue; }
-			temp = m_frame->intrinsic.f*pDepth[i]/p_kd[i];
-			a[0] = pGrad[i][0]*temp;
-			a[1] = pGrad[i][1]*temp;
-			a[2] = -(a[0]*pPts[i][0]+a[1]*pPts[i][0]);
-			a2 = a[0]*t[0]+a[1]*t[1]+a[2]*t[2];
-			p_kd[i] += a2*pDg[i] / (100 + a2*a2);
+		times = 0;
+		while(flag & BuildOpticalFlow) {
+			prepare_residual_of2();
+			ok = calc_du_of3();
+			m_of->add(m_dut);
+			if (
+				!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterate_times
+			) { break; }
+			times++;
+		}
+		while(flag & BuildEpipolar) {
+			ok = calc_e_dr_of3();
+			if (!(flag & BuildIterate) || ok) { break; }
+		}
+		while(flag & BuildTranslate) {
+			ok = calc_t_of3();
+			if (!(flag & BuildIterate) || ok) { break; }
+		}
+		if (flag & BuildDepth) {
+			update_depth_of3();
+			unproject_points_of3();
+		}
+		if (flag & BuildKeyframe) {
+			update_keyframe(resized);
+		}
+		steps++;
+		if (!(flag & BuildSequence) || 
+			steps >= Config::build_steps)
+		{ break; }
+		if (m_display_delegate) {
+			m_display_delegate->display_with(this);
 		}
 	}
-	
+	if (image) { delete image; }
+	if (resized) { delete resized; }	
+
+}
+void Slam::build_of4(BuildFlag flag) {
 
 
-
-	cv::minMaxIdx(image, &min, &max);
-	scale = 1./(max-min);
-	_image.convertTo(image, 
-		CV_32FC(image.channels()), scale, -min/(max-min));		
-
-	
-	//MatrixToolbox::rectify_rotation(m_frame->rotation);
-
-		
-		
-		//m_frame->gradient[0]->save("aaa.jpg");
-		//m_frame->gradient[1]->save("bbb.jpg");
-		//m_frame->gray->subtract(m_key->gray, m_frame->residual);
-		
-		
-	
-		// unprojects each pixel for calc delta
-		int width = m_key->gray->width();
-		int height = m_key->gray->height();
-		
-		
-		int total = width * height;
-		const Intrinsic& intri = m_key->intrinsic;
-		float invf0 = 1 / intri.f;
-		int u, v;
-		Vec4f p;
-		float* p_depth = (float*)m_key->depth->data();
-		Vec4f* p_pts = (Vec4f*)m_key->points->data();
-
-		for (int i = 0; i < total; i++) {
-	
-			u = i % width;
-			v = i / width;
-		
-			p[0] = (u-intri.cx)*invf0;
-			p[1] = (v-intri.cy)*invf0;
-			p[2] = 1;
-			p[3] = p_depth[i];
-		
-			p_pts[i] = p;
+	Image* image = NULL;
+	Image* resized = NULL;
+	int times = 0;
+	int steps = 0;
+	bool ok;
+	while(true) {
+		if ((flag & BuildReadFrame) && m_source->read(image)) {
+			image->resize(resized);
+			initialize(resized);
+			preprocess(resized);
 		}
-
-
+		times = 0;
+		while(flag & BuildOpticalFlow) {
+			prepare_du_of4();
+			ok = calc_du_of4();
+			//->add(m_dut);
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterate_times
+			) { break; }
+			times++;
+		}
 		
-	
-	if (m_source->read(image)) {
-		image->resize(resized);
-		initialize(resized);
+		times = 0;		
+		while(flag & BuildEpipolar) {
+			ok = calc_e_dr_of4();
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterate_times
+			) { break; }
+			times++;
+		}
+		/*
+		while(flag & BuildTranslate) {
+			ok = calc_t_of3();
+			if (!(flag & BuildIterate) || ok) { break; }
+		}
+		if (flag & BuildDepth) {
+			update_depth_of3();
+			unproject_points_of3();
+		}
+		*/
+		if (flag & BuildKeyframe) {
+			update_keyframe(resized);
+		}
+		steps++;
+		if (!(flag & BuildSequence) || 
+			steps >= Config::build_steps)
+		{ break; }
+		if (m_display_delegate) {
+			m_display_delegate->display_with(this);
+		}
 	}
+	if (image) { delete image; }
+	if (resized) { delete resized; }	
+
+}
+
+void Slam::prepare_du_of4() {
 
 
-		//if (delta_t.length2() < 0.0001) { break; }
-		break;
-
-		//image->convert_to(m_key->depth, Image::Float32);
-				
-		//memset(m_key->pos, 0, sizeof(m_key->pos));
-		//m_key->image = image;
-		//m_key->depth = default_depth; 
-
-	short* pGx = (short*)m_frame->gradient[0]->data();
-	short* pGy = (short*)m_frame->gradient[1]->data();
-	short* pDg = (short*)m_frame->residual->data();
-	float* pIz = (float*)m_key->depth->data();
+	if (!m_key || !m_frame) { return; }
 	
+	int total = m_width * m_height;
+	int u, v;
+	double m[2], w;
+	float *pfi1, *pfiu, *pfiv;
+	double min_w = Config::min_weight_of3;
 
-	if (m_camera_count == 1) {
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+	float* pi0 = (float*)m_key->gray->data();
+	float* pi1 = (float*)m_frame->gray->data();
+	float* pit = (float*)m_key->residual->data();
+	float* pwi1 = (float*)m_key->warp->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* pw = (float*)m_key->of_weight->data();
+
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* piu1 = (float*)m_frame->gradient[0]->data();
+	float* piv1 = (float*)m_frame->gradient[1]->data();
+
+
+	for (int i = 0; i < total; i++) {
 	
-		m_cameras[m_camera_count] = m_frame;
-		m_camera_count++;
-	}
+		u = i % m_width;
+		v = i / m_width;
+
+		m[0] = u + put[i][0];
+		m[1] = v + put[i][1];
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
 		
-			p_grad[i][0] = m_frame->gradient[0]->sample(m[0], m[1]);
-			p_grad[i][1] = m_frame->gradient[1]->sample(m[0], m[1]);
-			
-			p_dg[i] = p_gkey[i] - m_frame->gray->sample(m[0], m[1]);
+			pm[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
 
-m_frame->gray->sample(m[0], m[1]);
-
-	m_mask->set(255);
-	//m_mask->reset(width, height, Image::UnsignedChar);
-
-	unsigned char* pGray = (unsigned char*)m_frame->gray->data();
-
-
-	return Vec3d();
-	
-	//int width = image->width;
-	//int height = image->height;
-	
-	//u = i % width;
-	//v = i / width;
-	
-	
-	
-	
-	//foreach(pixel) {
-	
-		// calc a;
-		// calc b;
-		// calc w;
-		// A += w * a * a';
-		// B += w * b;
-	//}
-	//return inv(A) * B;
-	
-	return Vec3d();
-
-
-#include <unistd.h>
-		//sleep(10);
-
-void Slam::tick() {
-
-	std::cout << "Slam::tick" << std::endl;
+			pfi1 = pi1 + v * m_width + u;
+			pfiu = piu1 + v * m_width + u;
+			pfiv = piv1 + v * m_width + u;
+			pwi1[i] = SAMPLE_2D(pfi1[0], pfi1[1], pfi1[m_width], pfi1[m_width+1], m[0], m[1]);
+			pit[i] = pwi1[i] - pi0[i];
+			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
+			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
+			w = piu0[i]*pwiu1[i][0]+piv0[i]*pwiu1[i][1];
+			//if (w < 0) { w = 0; }
+			pw[i] = w;
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			pm[i] = 0;
+			pit[i] = 0;
+			pwi1[i] = 0;
+			pwiu1[i] = 0;
+			pw[i] = 0;
+		}
+	}
 
 
 }
 
+bool Slam::calc_du_of4() {
 
-	Camera* camera1 = new Camera();
-	camera1->pos[0] = 0;
-	camera1->pos[1] = 0;
-	camera1->pos[2] = 0;
-	
-	Camera* camera2 = new Camera();
-	camera2->pos[0] = 100;
-	camera2->pos[1] = 100;
-	camera2->pos[2] = 100;
-	
-	m_keyframes.push_back(camera1);
-	m_keyframes.push_back(camera2);
-	
-	m_cameras[0] = camera1;
-	m_cameras[1] = camera2;
-	
-	m_camera_count = 2;
+	std::cout << "Slam::calc_du_of3" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	float* pwit = (float*)m_key->residual->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	int u, v, u2, v2;
+	float w, W, iu0[2], iu1[2];//, d;
+	double A[4], iA[4], B[2], it, iuu[2], idet, iuiu[4];
+	double lamda = Config::du_smooth_lamda_of3;
+	double s = Config::stable_factor_of3;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		memset(A, 0, sizeof(A));
+		memset(B, 0, sizeof(B));
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+
+					iu0[0] = piu0[i+offid[k]];
+					iu0[1] = piv0[i+offid[k]];
+					iuu[0] = put[i+offid[k]][0]-put[i][0];
+					iuu[1] = put[i+offid[k]][1]-put[i][1];
+					w = pw[i+offid[k]];
+					it = pwit[i+offid[k]];
+
+					iuiu[0] = iu0[0]*iu0[0];
+					iuiu[1] = iu0[0]*iu0[1];
+					iuiu[2] = iu0[1]*iu0[0];
+					iuiu[3] = iu0[1]*iu0[1];
+
+					if (pm[i]) {
+						A[0] += iuiu[0];
+						A[1] += iuiu[1];
+						//A[2] += iuiu[2];
+						A[3] += iuiu[3];
+
+						B[0] += iu0[0]*it;
+						B[1] += iu0[1]*it;
+
+					}
+
+					if (Config::use_i1_constrain_of3) {
+						
+						iu1[0] = pwiu1[i+offid[k]][0];
+						iu1[1] = pwiu1[i+offid[k]][1];
+						A[0] += iu1[0]*iu1[0];
+						A[1] += iu1[0]*iu1[1];
+						//A[2] += iu1[1]*iu1[0];
+						A[3] += iu1[1]*iu1[1];
+
+						B[0] += iu1[0]*it;
+						B[1] += iu1[1]*it;
+
+					}
 
 
+					A[0] += iuiu[0]*lamda*w;
+					A[1] += iuiu[1]*lamda*w;
+					//A[2] += iuiu[2]*lamda*w;
+					A[3] += iuiu[3]*lamda*w;
 
-#include <stdio.h>
-#include <stdio.h>
+					B[0] += -lamda*w*(iuiu[0]*iuu[0]+
+						iuiu[1]*iuu[1]);
+					B[1] += -lamda*w*(iuiu[2]*iuu[0]+
+						iuiu[3]*iuu[1]);
 
-*********************************/
+					A[0] += s;
+					A[3] += s;
+					B[0] -= s*iuu[0];
+					B[1] -= s*iuu[1];
+
+			}
+		}
+
+		A[2] = A[1];
+
+
+		idet = 1.0/(A[0]*A[3]-A[1]*A[2]);
+		iA[0] = A[3]*idet;
+		iA[1] = -A[2]*idet;
+		iA[2] = -A[1]*idet;
+		iA[3] = A[0] *idet;
+
+		pdut[i][0] = -(iA[0]*B[0]+iA[1]*B[1]);
+		pdut[i][1] = -(iA[2]*B[0]+iA[3]*B[1]);
+
+	}
+
+	//return is ok?
+	m_key->optical_flow->add(m_key->dut);
+	return false;
+}
+
+bool Slam::calc_e_dr_of4() {
+
+
+	std::cout << "Slam::calc_e_dr_of4" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+	float* pwo = (float*)m_key->of_weight->data();
+	float* pwe = (float*)m_key->epi_weight->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
+
+	 Intrinsic in = m_key->intrinsic;
+	 double f1 = 1.0 / in.f;
+	 double m0[3], m1[3], x0[3], x1[3], x10[3], du[2];
+	 Vec9d iR = MatrixToolbox::inv_matrix_3x3(m_frame->rotation);
+	 const double* R = iR.val;
+	 const double* e = m_frame->epi_point.val;
+	 double c, wo, we, ae[3], ar[3], ar0[3];
+	 double Ae[9], Ar[9], Br[3];
+
+	 memset(Ae, 0, sizeof(Ae));
+	 memset(Ar, 0, sizeof(Ar));
+	 memset(Br, 0, sizeof(Br));
+	 memset(ae, 0, sizeof(ae));
+ 	 m0[2] = 1;
+ 	 m1[2] = 1;
+	 x10[2] = 1;
+	 x0[2] = 1;
+	 x1[2] = 1;
+
+	for (int i = 0; i < total; i++) {
+
+		m0[0] = i % m_width - in.cx;
+		m0[1] = i / m_width - in.cy;
+		m1[0] = m0[0] + put[i][0];
+		m1[1] = m0[1] + put[i][1];
+		x0[0] = m0[0]*f1;
+		x0[1] = m0[1]*f1;
+		x10[0] = m1[0]*f1;
+		x10[1] = m1[1]*f1;
+		x1[0] = R[0]*x10[0]+R[1]*x10[1]+R[2]*x10[2];
+		x1[1] = R[3]*x10[0]+R[4]*x10[1]+R[5]*x10[2];
+		x1[2] = R[6]*x10[0]+R[7]*x10[1]+R[8]*x10[2];
+		x1[0] /= x1[2];
+		x1[1] /= x1[2];
+		x1[2] = 1;
+
+		du[0] = x1[0]*in.f-m0[0];
+		du[1] = x1[1]*in.f-m0[1];
+		pdut[i][0] = du[0];
+		pdut[i][1] = du[1];
+
+		we = du[0]*e[0]+du[1]*e[1]-
+			(du[0]*x0[0]+du[1]*x0[1])*e[2];
+		we *= f1;
+		pwe[i] = we;
+		wo = pwo[i];
+
+		ae[0] += wo*du[0];
+		ae[1] += wo*du[1];
+		ae[2] -= wo*(du[0]*x0[0]+du[1]*x0[1]);
+
+		ar0[0] = x1[1]*e[2]-x1[2]*e[1];
+		ar0[1] = x1[2]*e[0]-x1[0]*e[2];
+		ar0[2] = x1[0]*e[1]-x1[1]*e[0];
+
+		ar[0] = x0[1]*ar0[2]-x0[2]*ar0[1];
+		ar[1] = x0[2]*ar0[0]-x0[0]*ar0[2];
+		ar[2] = x0[0]*ar0[1]-x0[1]*ar0[0];
+
+		Ar[0] += wo*ar[0]*ar[0];
+		Ar[1] += wo*ar[0]*ar[1];
+		Ar[2] += wo*ar[0]*ar[2];
+		Ar[4] += wo*ar[1]*ar[1];
+		Ar[5] += wo*ar[1]*ar[2];
+		Ar[8] += wo*ar[2]*ar[2];
+
+		c = x0[0]*ar0[0]+x0[1]*ar0[1]+x0[2]*ar0[2];
+
+		Br[0] -= wo*c*ar[0];
+		Br[1] -= wo*c*ar[1];
+		Br[2] -= wo*c*ar[2];
+	}
+
+
+	Ar[3] = Ar[1];
+	Ar[6] = Ar[2];
+	Ar[7] = Ar[5];
+
+	Ar[0] += 0.1;
+	Ar[4] += 0.1;
+	Ar[8] += 0.1;
+
+
+	double n = sqrt(ae[0]*ae[0]+ae[1]*ae[1]+ae[2]*ae[2]);
+	m_frame->epi_point[0] = ae[0]/n;
+	m_frame->epi_point[1] = ae[1]/n;
+	m_frame->epi_point[2] = ae[2]/n;
+		
+	Vec9d iAr = MatrixToolbox::inv_matrix_3x3(Ar);
+	double dr[3] = {
+			iAr[0]*Br[0]+iAr[1]*Br[1]+iAr[2]*Br[2],
+			iAr[3]*Br[0]+iAr[4]*Br[1]+iAr[5]*Br[2],
+			iAr[6]*Br[0]+iAr[7]*Br[1]+iAr[8]*Br[2],
+
+	};
+	MatrixToolbox::update_rotation(m_frame->rotation, dr);
+	m_frame->rotation_warp(m_warp);
+
+	return true;
+
+}
+
+} // namespace
 

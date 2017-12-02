@@ -48,6 +48,9 @@ public:
 					// Ut = sum(wUt)/W, W = dot(Iu0, Iu1)
 		Of3,		// E(dut) = (iu0dut-it)^2+(iu1dut-it)^+
 					//		lamda w(iu0(dut-duu)^2)
+		Of4,		// E(e) = w dot(du, ux e);
+					// E(dr) = w dot((x0+xr dr), cross(x1, e));
+					// move mediat result to keyframe
 	};
 
 	static int max_width;
@@ -63,6 +66,8 @@ public:
 	static double min_weight_of3;
 	static bool use_i1_constrain_of3;
 	static double epi_sigma2_of3;
+	static int max_iterate_times;
+	static int build_steps;
 
 
 };
