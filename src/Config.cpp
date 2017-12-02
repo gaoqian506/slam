@@ -22,4 +22,5 @@ namespace ww {
 	double Config::epi_sigma2_of3 = 40000;
 	int Config::max_iterate_times = 100;
 	int Config::build_steps = 10;
+	bool Config::only_calc_epi_dr = true;
 }

@@ -68,6 +68,7 @@ public:
 	static double epi_sigma2_of3;
 	static int max_iterate_times;
 	static int build_steps;
+	static bool only_calc_epi_dr;
 
 
 };

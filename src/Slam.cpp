@@ -3592,10 +3592,14 @@ bool Slam::calc_e_dr_of4() {
 	Ar[8] += 0.1;
 
 
-	double n = sqrt(ae[0]*ae[0]+ae[1]*ae[1]+ae[2]*ae[2]);
-	m_frame->epi_point[0] = ae[0]/n;
-	m_frame->epi_point[1] = ae[1]/n;
-	m_frame->epi_point[2] = ae[2]/n;
+	if (m_frame->epi_point.length2() < 0.5
+	 || !Config::only_calc_epi_dr) {
+		double n = sqrt(ae[0]*ae[0]+ae[1]*ae[1]+ae[2]*ae[2]);
+		m_frame->epi_point[0] = ae[0]/n;
+		m_frame->epi_point[1] = ae[1]/n;
+		m_frame->epi_point[2] = ae[2]/n;		
+	}
+
 		
 	Vec9d iAr = MatrixToolbox::inv_matrix_3x3(Ar);
 	double dr[3] = {
