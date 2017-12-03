@@ -114,6 +114,7 @@ private:
 	Image* m_depth;
 	Image* m_iuux;
 	Image* m_debug_image;
+	Image* m_debug_weight;
 	Image* m_epi_line;
 	Image* m_warp;
 	Image* m_weight;

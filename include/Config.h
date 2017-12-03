@@ -69,6 +69,7 @@ public:
 	static int max_iterate_times;
 	static int build_steps;
 	static bool only_calc_epi_dr;
+	static bool use_of_smooth_of4;
 
 
 };

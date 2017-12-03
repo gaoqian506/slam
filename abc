@@ -1,6 +1,150 @@
 
 
 
+
+
+bool Slam::calc_du_of4() {
+
+	std::cout << "Slam::calc_du_of3" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	float* pwit = (float*)m_key->residual->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	int u, v, u2, v2;
+	float w, W, iu0[2], iu1[2];//, d;
+	double A[4], iA[4], B[2], it, iuu[2], idet, iuiu[4];
+	double lamda = Config::du_smooth_lamda_of3;
+	double s = Config::stable_factor_of3;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		memset(A, 0, sizeof(A));
+		memset(B, 0, sizeof(B));
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+
+					iu0[0] = piu0[i+offid[k]];
+					iu0[1] = piv0[i+offid[k]];
+					iuu[0] = put[i+offid[k]][0]-put[i][0];
+					iuu[1] = put[i+offid[k]][1]-put[i][1];
+					w = pw[i+offid[k]];
+					it = pwit[i+offid[k]];
+
+					iuiu[0] = iu0[0]*iu0[0];
+					iuiu[1] = iu0[0]*iu0[1];
+					iuiu[2] = iu0[1]*iu0[0];
+					iuiu[3] = iu0[1]*iu0[1];
+
+					if (pm[i]) {
+						A[0] += iuiu[0];
+						A[1] += iuiu[1];
+						//A[2] += iuiu[2];
+						A[3] += iuiu[3];
+
+						B[0] += iu0[0]*it;
+						B[1] += iu0[1]*it;
+
+					}
+
+					if (Config::use_i1_constrain_of3) {
+						
+						iu1[0] = pwiu1[i+offid[k]][0];
+						iu1[1] = pwiu1[i+offid[k]][1];
+						A[0] += iu1[0]*iu1[0];
+						A[1] += iu1[0]*iu1[1];
+						//A[2] += iu1[1]*iu1[0];
+						A[3] += iu1[1]*iu1[1];
+
+						B[0] += iu1[0]*it;
+						B[1] += iu1[1]*it;
+
+					}
+
+					if (Config::use_of_smooth_of4) {
+
+						w += 0.001;
+						iuiu[0] += s;
+						iuiu[3] += s;
+
+						A[0] += iuiu[0]*lamda*w;
+						A[1] += iuiu[1]*lamda*w;
+						//A[2] += iuiu[2]*lamda*w;
+						A[3] += iuiu[3]*lamda*w;
+
+						B[0] += -lamda*w*(iuiu[0]*iuu[0]+
+							iuiu[1]*iuu[1]);
+						B[1] += -lamda*w*(iuiu[2]*iuu[0]+
+							iuiu[3]*iuu[1]);
+
+						/*
+						A[0] += lamda*(iuiu[0]*w+s);
+						A[1] += lamda*(iuiu[1]*w);
+						//A[2] += iuiu[2]*lamda*w;
+						A[3] += lamda*(iuiu[3]*w+s);
+
+						//A[0] += lamda*s;
+						//A[3] += lamda*s;					
+
+						//B[0] += -lamda*w*(iuiu[0]*iuu[0]+
+						//	iuiu[1]*iuu[1]);
+						//B[1] += -lamda*w*(iuiu[2]*iuu[0]+
+						//	iuiu[3]*iuu[1]);
+
+						B[0] -= lamda*s*iuu[0];
+						B[1] -= lamda*s*iuu[1];
+						*/
+					}
+
+
+			}
+		}
+
+		A[2] = A[1];
+
+		//A[0] += s;
+		/A[3] += s;
+
+
+		idet = 1.0/(A[0]*A[3]-A[1]*A[2]);
+		iA[0] = A[3]*idet;
+		iA[1] = -A[2]*idet;
+		iA[2] = -A[1]*idet;
+		iA[3] = A[0] *idet;
+
+		pdut[i][0] = -(iA[0]*B[0]+iA[1]*B[1]);
+		pdut[i][1] = -(iA[2]*B[0]+iA[3]*B[1]);
+
+	}
+
+	//return is ok?
+	m_key->optical_flow->add(m_key->dut);
+	return false;
+}
+
+
 		//m_content->push_manauly();
 		// m_content->build((ViewContent::BuildFlag)(
 		// 	ViewContent::BuildAll - 

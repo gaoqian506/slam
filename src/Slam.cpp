@@ -31,6 +31,7 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_depth = NULL;
 	m_iuux = NULL;
 	m_debug_image = NULL;
+	m_debug_weight = NULL;
 	m_epi_line = NULL;
 	m_warp = NULL;
 	m_weight = NULL;
@@ -105,6 +106,7 @@ bool Slam::changed() {
 Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 
 	Image *which1 = NULL, *which2 = NULL;
+
 	Camera* key = NULL;
 	if (kid < m_keyframes.size()) {
 		key = m_cameras[kid];
@@ -164,6 +166,16 @@ Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 	}
 	else {
 		which1 = NULL;
+	}
+
+
+	double min, max, scale;
+
+	if (weight && *weight) {
+		(*weight)->min_max(&min, &max);
+		scale = 1./(max-min);
+		(*weight)->convert_to(m_debug_weight, Image::Float32, scale, -min/(max-min));
+		*weight = m_debug_weight;
 	}
 
 	if (which1 && !which2 && which1->channels() == 1) {
@@ -3363,7 +3375,7 @@ void Slam::prepare_du_of4() {
 			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
 			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
 			w = piu0[i]*pwiu1[i][0]+piv0[i]*pwiu1[i][1];
-			//if (w < 0) { w = 0; }
+			if (w < 0) { w = 0; }
 			pw[i] = w;
 			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
 		}
@@ -3381,7 +3393,7 @@ void Slam::prepare_du_of4() {
 
 bool Slam::calc_du_of4() {
 
-	std::cout << "Slam::calc_du_of3" << std::endl;
+	std::cout << "Slam::calc_du_of4" << std::endl;
 
 	if (!m_key || !m_frame) { return true; }
 	int total = m_width * m_height;
@@ -3409,86 +3421,48 @@ bool Slam::calc_du_of4() {
 	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
 	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
 
+	double a, b[2], c;
+
 	for (int i = 0; i < total; i++) {
+
 
 		u = i % m_width;
 		v = i / m_width;
 
-		memset(A, 0, sizeof(A));
-		memset(B, 0, sizeof(B));
+		iu0[0] = piu0[i];
+		iu0[1] = piv0[i];
+		it = pwit[i];
+		c = iu0[0]*iu0[0]+iu0[1]*iu0[1];
+		a = c;
+		b[0] = it*iu0[0];
+		b[1] = it*iu0[1];
+
+		if (Config::use_i1_constrain_of3) {
+			iu1[0] = pwiu1[i][0];
+			iu1[1] = pwiu1[i][1];
+
+			a += iu1[0]*iu1[0]+iu1[1]*iu1[1];
+			b[0] += it*iu1[0];
+			b[1] += it*iu1[1];			
+		}
+
 
 		for (int k = 0; k < 9; k++) {
 			u2 = u + offx[k];
 			v2 = v + offy[k];
 			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
 
-					iu0[0] = piu0[i+offid[k]];
-					iu0[1] = piv0[i+offid[k]];
 					iuu[0] = put[i+offid[k]][0]-put[i][0];
 					iuu[1] = put[i+offid[k]][1]-put[i][1];
-					w = pw[i+offid[k]];
-					it = pwit[i+offid[k]];
-
-					iuiu[0] = iu0[0]*iu0[0];
-					iuiu[1] = iu0[0]*iu0[1];
-					iuiu[2] = iu0[1]*iu0[0];
-					iuiu[3] = iu0[1]*iu0[1];
-
-					if (pm[i]) {
-						A[0] += iuiu[0];
-						A[1] += iuiu[1];
-						//A[2] += iuiu[2];
-						A[3] += iuiu[3];
-
-						B[0] += iu0[0]*it;
-						B[1] += iu0[1]*it;
-
-					}
-
-					if (Config::use_i1_constrain_of3) {
-						
-						iu1[0] = pwiu1[i+offid[k]][0];
-						iu1[1] = pwiu1[i+offid[k]][1];
-						A[0] += iu1[0]*iu1[0];
-						A[1] += iu1[0]*iu1[1];
-						//A[2] += iu1[1]*iu1[0];
-						A[3] += iu1[1]*iu1[1];
-
-						B[0] += iu1[0]*it;
-						B[1] += iu1[1]*it;
-
-					}
-
-
-					A[0] += iuiu[0]*lamda*w;
-					A[1] += iuiu[1]*lamda*w;
-					//A[2] += iuiu[2]*lamda*w;
-					A[3] += iuiu[3]*lamda*w;
-
-					B[0] += -lamda*w*(iuiu[0]*iuu[0]+
-						iuiu[1]*iuu[1]);
-					B[1] += -lamda*w*(iuiu[2]*iuu[0]+
-						iuiu[3]*iuu[1]);
-
-					A[0] += s;
-					A[3] += s;
-					B[0] -= s*iuu[0];
-					B[1] -= s*iuu[1];
-
+					w = pw[i+offid[k]] + Config::stable_factor_of3;
+					a += w*(c+0.5);
+					b[0] -= w*(c+0.5)*iuu[0];
+					b[1] -= w*(c+0.5)*iuu[1];
 			}
 		}
 
-		A[2] = A[1];
-
-
-		idet = 1.0/(A[0]*A[3]-A[1]*A[2]);
-		iA[0] = A[3]*idet;
-		iA[1] = -A[2]*idet;
-		iA[2] = -A[1]*idet;
-		iA[3] = A[0] *idet;
-
-		pdut[i][0] = -(iA[0]*B[0]+iA[1]*B[1]);
-		pdut[i][1] = -(iA[2]*B[0]+iA[3]*B[1]);
+		pdut[i][0] = -b[0]/(a+0.01);
+		pdut[i][1] = -b[1]/(a+0.01);
 
 	}
 
