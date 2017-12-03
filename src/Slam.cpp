@@ -159,10 +159,13 @@ Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 		which1 = key ? key->of_weight : m_weight;
 		m_image_name = "of weight(10)";
 	}	
-
 	else if (iid == 10) {
+		which1 = key ? key->epi_weight : m_weight;
+		m_image_name = "of weight(11)";
+	}	
+	else if (iid == 11) {
 		which1 = key ? key->mask : m_mask;
-		m_image_name = "mask(11)";
+		m_image_name = "mask(12)";
 	}
 	else {
 		which1 = NULL;
@@ -2702,7 +2705,7 @@ bool Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 
 	};
 	MatrixToolbox::update_rotation(m_frame->rotation, dr);
-	m_frame->rotation_warp(m_warp);
+	m_frame->rotation_warp(m_key->warp);
 
 	return true;
 }
@@ -3293,7 +3296,7 @@ void Slam::build_of4(BuildFlag flag) {
 		
 		times = 0;		
 		while(flag & BuildEpipolar) {
-			ok = calc_e_dr_of4();
+			ok = calc_e_dr_of3();
 			if (!(flag & BuildIterate) || ok || 
 				times >= Config::max_iterate_times
 			) { break; }
@@ -3528,7 +3531,8 @@ bool Slam::calc_e_dr_of4() {
 			(du[0]*x0[0]+du[1]*x0[1])*e[2];
 		we *= f1;
 		pwe[i] = we;
-		wo = pwo[i];
+		wo = we;//pwo[i];
+		if (wo < 0.001) { wo = 0.001; }
 
 		ae[0] += wo*du[0];
 		ae[1] += wo*du[1];
@@ -3583,7 +3587,7 @@ bool Slam::calc_e_dr_of4() {
 
 	};
 	MatrixToolbox::update_rotation(m_frame->rotation, dr);
-	m_frame->rotation_warp(m_warp);
+	m_frame->rotation_warp(m_key->warp);
 
 	return true;
 

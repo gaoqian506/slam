@@ -3,7 +3,7 @@
 namespace ww {
 
 
-	int Config::max_width = 120;
+	int Config::max_width = 320;
 	bool Config::manually_content = true;
 	//bool Config::epipolar_mode = true;
 	//Config::Method Config::method = Config::Entropy5;
@@ -22,6 +22,6 @@ namespace ww {
 	double Config::epi_sigma2_of3 = 40000;
 	int Config::max_iterate_times = 100;
 	int Config::build_steps = 10;
-	bool Config::only_calc_epi_dr = true;
+	bool Config::only_calc_epi_dr = false;
 	bool Config::use_of_smooth_of4 = true;
 }
