@@ -2603,27 +2603,27 @@ bool Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 
 	if (!m_key || !m_frame) { return true; }
 	int total = m_width * m_height;
-	Vec2f* put = (Vec2f*)m_of->data();
-	float* pw = (float*)m_weight->data();
-	Vec2f* pdut = (Vec2f*)m_dut->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+	float* pw = (float*)m_key->epi_weight->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
 
-	 Intrinsic in = m_key->intrinsic;
-	 double f1 = 1.0 / in.f;
-	 double m0[3], m1[3], x0[3], x1[3], x10[3];
-	 Vec9d iR = MatrixToolbox::inv_matrix_3x3(m_frame->rotation);
-	 const double* R = iR.val;
-	 const double* e = m_frame->epi_point.val;
-	 double c, w, ae[3], ar[3], ar0[3];
-	 double Ae[9], Ar[9], Br[3];
+	Intrinsic in = m_key->intrinsic;
+	double f1 = 1.0 / in.f;
+	double m0[3], m1[3], x0[3], x1[3], x10[3];
+	Vec9d iR = MatrixToolbox::inv_matrix_3x3(m_frame->rotation);
+	const double* R = iR.val;
+	const double* e = m_frame->epi_point.val;
+	double c, w, ae[3], ar[3], ar0[3];
+	double Ae[9], Ar[9], Br[3];
 
-	 memset(Ae, 0, sizeof(Ae));
-	 memset(Ar, 0, sizeof(Ar));
-	 memset(Br, 0, sizeof(Br));
- 	 m0[2] = 1;
- 	 m1[2] = 1;
-	 x10[2] = 1;
-	 x0[2] = 1;
-	 x1[2] = 1;
+	memset(Ae, 0, sizeof(Ae));
+	memset(Ar, 0, sizeof(Ar));
+	memset(Br, 0, sizeof(Br));
+	m0[2] = 1;
+	m1[2] = 1;
+	x10[2] = 1;
+	x0[2] = 1;
+	x1[2] = 1;
 
 	for (int i = 0; i < total; i++) {
 
@@ -2693,9 +2693,9 @@ bool Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 	Ar[8] += 0.1;
 
 
-	if (!only_dr) {
+	//if (!only_dr) {
 		m_frame->epi_point = MatrixToolbox::min_eigen_vector_3x3(Ae);	
-	}
+	//}
 	
 	Vec9d iAr = MatrixToolbox::inv_matrix_3x3(Ar);
 	double dr[3] = {
@@ -3296,7 +3296,7 @@ void Slam::build_of4(BuildFlag flag) {
 		
 		times = 0;		
 		while(flag & BuildEpipolar) {
-			ok = calc_e_dr_of4();
+			ok = calc_e_dr_of3();
 			if (!(flag & BuildIterate) || ok || 
 				times >= Config::max_iterate_times
 			) { break; }

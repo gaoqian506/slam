@@ -1,6 +1,120 @@
 
 
 
+bool Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
+
+
+	std::cout << "Slam::calc_e_dr_of3" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	Vec2f* put = (Vec2f*)m_of->data();
+	float* pw = (float*)m_weight->data();
+	Vec2f* pdut = (Vec2f*)m_dut->data();
+
+	 Intrinsic in = m_key->intrinsic;
+	 double f1 = 1.0 / in.f;
+	 double m0[3], m1[3], x0[3], x1[3], x10[3];
+	 Vec9d iR = MatrixToolbox::inv_matrix_3x3(m_frame->rotation);
+	 const double* R = iR.val;
+	 const double* e = m_frame->epi_point.val;
+	 double c, w, ae[3], ar[3], ar0[3];
+	 double Ae[9], Ar[9], Br[3];
+
+	 memset(Ae, 0, sizeof(Ae));
+	 memset(Ar, 0, sizeof(Ar));
+	 memset(Br, 0, sizeof(Br));
+ 	 m0[2] = 1;
+ 	 m1[2] = 1;
+	 x10[2] = 1;
+	 x0[2] = 1;
+	 x1[2] = 1;
+
+	for (int i = 0; i < total; i++) {
+
+		m0[0] = i % m_width - in.cx;
+		m0[1] = i / m_width - in.cy;
+		m1[0] = m0[0] + put[i][0];
+		m1[1] = m0[1] + put[i][1];
+		x0[0] = m0[0]*f1;
+		x0[1] = m0[1]*f1;
+		x10[0] = m1[0]*f1;
+		x10[1] = m1[1]*f1;
+		x1[0] = R[0]*x10[0]+R[1]*x10[1]+R[2]*x10[2];
+		x1[1] = R[3]*x10[0]+R[4]*x10[1]+R[5]*x10[2];
+		x1[2] = R[6]*x10[0]+R[7]*x10[1]+R[8]*x10[2];
+
+		pdut[i][0] = x1[0]*in.f/x1[2]-m0[0];
+		pdut[i][1] = x1[1]*in.f/x1[2]-m0[1];
+
+		ae[0] = x0[1]*x1[2]-x0[2]*x1[1];
+		ae[1] = x0[2]*x1[0]-x0[0]*x1[2];
+		ae[2] = x0[0]*x1[1]-x0[1]*x1[0];
+
+		c = ae[0]*e[0]+ae[1]*e[1]+ae[2]*e[2];
+		w = exp(-c*c*Config::epi_sigma2_of3);
+		pw[i] = w;
+
+		Ae[0] += w*ae[0]*ae[0];
+		Ae[1] += w*ae[0]*ae[1];
+		Ae[2] += w*ae[0]*ae[2];
+		Ae[4] += w*ae[1]*ae[1];
+		Ae[5] += w*ae[1]*ae[2];
+		Ae[8] += w*ae[2]*ae[2];
+
+		ar0[0] = x1[1]*e[2]-x1[2]*e[1];
+		ar0[1] = x1[2]*e[0]-x1[0]*e[2];
+		ar0[2] = x1[0]*e[1]-x1[1]*e[0];
+
+		ar[0] = x0[1]*ar0[2]-x0[2]*ar0[1];
+		ar[1] = x0[2]*ar0[0]-x0[0]*ar0[2];
+		ar[2] = x0[0]*ar0[1]-x0[1]*ar0[0];
+
+		Ar[0] += w*ar[0]*ar[0];
+		Ar[1] += w*ar[0]*ar[1];
+		Ar[2] += w*ar[0]*ar[2];
+		Ar[4] += w*ar[1]*ar[1];
+		Ar[5] += w*ar[1]*ar[2];
+		Ar[8] += w*ar[2]*ar[2];
+
+		Br[0] -= w*c*ar[0];
+		Br[1] -= w*c*ar[1];
+		Br[2] -= w*c*ar[2];
+	}
+
+	Ae[3] = Ae[1];
+	Ae[6] = Ae[2];
+	Ae[7] = Ae[5];
+
+	Ar[3] = Ar[1];
+	Ar[6] = Ar[2];
+	Ar[7] = Ar[5];
+	
+	//A /= total;
+	//B /= total;
+
+	Ar[0] += 0.1;
+	Ar[4] += 0.1;
+	Ar[8] += 0.1;
+
+
+	if (!only_dr) {
+		m_frame->epi_point = MatrixToolbox::min_eigen_vector_3x3(Ae);	
+	}
+	
+	Vec9d iAr = MatrixToolbox::inv_matrix_3x3(Ar);
+	double dr[3] = {
+			iAr[0]*Br[0]+iAr[1]*Br[1]+iAr[2]*Br[2],
+			iAr[3]*Br[0]+iAr[4]*Br[1]+iAr[5]*Br[2],
+			iAr[6]*Br[0]+iAr[7]*Br[1]+iAr[8]*Br[2],
+
+	};
+	MatrixToolbox::update_rotation(m_frame->rotation, dr);
+	m_frame->rotation_warp(m_key->warp);
+
+	return true;
+}
+
  m_trans_2d[0] *= 0.8; 
 			u = x - center[0];
 			v = x - center[1];

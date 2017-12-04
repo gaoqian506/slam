@@ -70,6 +70,7 @@ private:
 	double m_vpp; //view per pixel in radian
 	Vec16d m_view_matrix;
 	int m_point_size;
+	Vec2d m_epi_point;
 	
 
 

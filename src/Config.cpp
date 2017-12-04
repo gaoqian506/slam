@@ -15,11 +15,11 @@ namespace ww {
 	int Config::field_skip = 1;
 	double Config::sigma2_dgdu = 1.0/(0.2*0.2);
 	double Config::sigma2_dgdt = 1.0/(0.5*0.5);
-	double Config::du_smooth_lamda_of3 = 10;
+	double Config::du_smooth_lamda_of3 = 2;
 	double Config::stable_factor_of3 = 0.01;
 	double Config::min_weight_of3 = 0.1;
 	bool Config::use_i1_constrain_of3 = true;
-	double Config::epi_sigma2_of3 = 40000;
+	double Config::epi_sigma2_of3 = 10000;
 	int Config::max_iterate_times = 100;
 	int Config::build_steps = 10;
 	bool Config::only_calc_epi_dr = false;

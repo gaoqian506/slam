@@ -74,4 +74,14 @@ void Camera::rotation_warp(Image*& out, bool inverse/* = true*/) {
 
 }
 
+Vec2d Camera::image_epi_point() {
+
+	double z1 = 1.0 / (epi_point[2] + 0.0001);
+	return Vec2d(
+		intrinsic.f*epi_point[0]*z1+intrinsic.cx,
+		intrinsic.f*epi_point[1]*z1+intrinsic.cy
+	);
+
+}
+
 } // namespace

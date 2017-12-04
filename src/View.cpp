@@ -371,7 +371,7 @@ void View::passive_mouse_move(int x, int y) {
 			x, y, m_trans_2d, 
 			m_current_image->width(), 
 			m_current_image->height()
-		);		
+		);
 		glutPostRedisplay();
 	}
 
@@ -517,9 +517,23 @@ void View::draw_field(Image* field, Image* weight/* = NULL*/) {
 		glVertex2d(u+m[0], v+m[1]);
 		glVertex2d(u+m[0]+mv[0], v+m[1]+mv[1]);
 		glEnd();
-		glLineWidth(1);
+
+		Camera* camera = m_content->get_current_frame();
+		if (camera) {
+			Vec2d ep = camera->image_epi_point();
+			glColor3d(1, 1, 0);
+			glBegin(GL_LINES);
+			glVertex2d(u+m[0], v+m[1]);
+			glVertex2d(ep[0]+m[0], ep[1]+m[1]);
+			glEnd();
+		}
+
+
+		glLineWidth(1);		
+
 	}
-	
+
+
 
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
