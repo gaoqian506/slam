@@ -1,6 +1,181 @@
 
 
 
+ m_trans_2d[0] *= 0.8; 
+			u = x - center[0];
+			v = x - center[1];
+			w = 1.25;
+			m_trans_2d[0] *= w;
+			m_trans_2d[1] = w*m_trans_2d[0]+u-w*u;
+			m_trans_2d[1] = w*m_trans_2d[1]+v-w*v;
+
+
+b Slam.cpp:3435 if (u == 45 && v == 31)
+
+
+bool Slam::calc_du_of4() {
+
+	std::cout << "Slam::calc_du_of4" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	float* pwit = (float*)m_key->residual->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	int u, v, u2, v2;
+	float w, W, iu0[2], iu1[2];//, d;
+	double A[4], iA[4], B[2], it, iuu[2], idet, iuiu[4];
+	double lamda = Config::du_smooth_lamda_of3;
+	double s = Config::stable_factor_of3;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	double a, b[2], c;
+
+	for (int i = 0; i < total; i++) {
+
+
+		u = i % m_width;
+		v = i / m_width;
+
+		iu0[0] = piu0[i];
+		iu0[1] = piv0[i];
+		it = pwit[i];
+		c = iu0[0]*iu0[0]+iu0[1]*iu0[1];
+		a = c;
+		b[0] = -it*iu0[0];
+		b[1] = -it*iu0[1];
+
+		if (Config::use_i1_constrain_of3) {
+			iu1[0] = pwiu1[i][0];
+			iu1[1] = pwiu1[i][1];
+
+			a += iu1[0]*iu1[0]+iu1[1]*iu1[1];
+			b[0] -= it*iu1[0];
+			b[1] -= it*iu1[1];			
+		}
+
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+
+					iuu[0] = put[i+offid[k]][0]-put[i][0];
+					iuu[1] = put[i+offid[k]][1]-put[i][1];
+					w = pw[i+offid[k]] + Config::stable_factor_of3;
+					w *= Config::du_smooth_lamda_of3;
+					//w = Config::stable_factor_of3;;
+					a += w;//*(c+0.5);
+					b[0] += w*iuu[0];
+					b[1] += w*iuu[1];
+			}
+		}
+
+		pdut[i][0] = b[0]/(a+0.01);
+		pdut[i][1] = b[1]/(a+0.01);
+
+	}
+
+	//return is ok?
+	m_key->optical_flow->add(m_key->dut);
+	return false;
+}
+
+
+bool Slam::calc_du_of4() {
+
+	std::cout << "Slam::calc_du_of4" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	float* pwit = (float*)m_key->residual->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	int u, v, u2, v2;
+	float w, W, iu0[2], iu1[2];//, d;
+	double A[4], iA[4], B[2], it, iuu[2], idet, iuiu[4];
+	double lamda = Config::du_smooth_lamda_of3;
+	double s = Config::stable_factor_of3;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	double a, b[2], c;
+
+	for (int i = 0; i < total; i++) {
+
+
+		u = i % m_width;
+		v = i / m_width;
+
+		iu0[0] = piu0[i];
+		iu0[1] = piv0[i];
+		it = pwit[i];
+		c = iu0[0]*iu0[0]+iu0[1]*iu0[1];
+		a = c;
+		b[0] = it*iu0[0];
+		b[1] = it*iu0[1];
+
+		if (Config::use_i1_constrain_of3) {
+			iu1[0] = pwiu1[i][0];
+			iu1[1] = pwiu1[i][1];
+
+			a += iu1[0]*iu1[0]+iu1[1]*iu1[1];
+			b[0] += it*iu1[0];
+			b[1] += it*iu1[1];			
+		}
+
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+
+					iuu[0] = put[i+offid[k]][0]-put[i][0];
+					iuu[1] = put[i+offid[k]][1]-put[i][1];
+					w = pw[i+offid[k]] + Config::stable_factor_of3;
+					a += w*(c+0.5);
+					b[0] -= w*(c+0.5)*iuu[0];
+					b[1] -= w*(c+0.5)*iuu[1];
+			}
+		}
+
+		pdut[i][0] = -b[0]/(a+0.01);
+		pdut[i][1] = -b[1]/(a+0.01);
+
+	}
+
+	//return is ok?
+	m_key->optical_flow->add(m_key->dut);
+	return false;
+}
+
 
 
 bool Slam::calc_du_of4() {

@@ -153,6 +153,50 @@ Vec2d GlToolbox::screen_to_image(const double& x, const double& y, const double&
 	return Vec2d(iA[0]*x+iA[2], iA[4]*y+iA[5]);
 }
 
+Vec2d GlToolbox::screen_to_image(double x, double y, Vec3d trans, int w, int h) {
+
+	int vp[4];
+	glGetIntegerv(GL_VIEWPORT, vp);
+
+	double u = x-vp[2]*0.5;
+	double v = y-vp[3]*0.5;
+
+	double s1 = 1.0/trans[0];
+
+	double m0 = u*s1-trans[1]*s1;
+	double m1 = v*s1-trans[2]*s1;
+	return Vec2d(m0+w*0.5, m1+h*0.5);
+
+}
+
+void GlToolbox::zoom_screen(int x, int y, double s, Vec3d& trans) {
+
+	int vp[4];
+	glGetIntegerv(GL_VIEWPORT, vp);
+
+	double u = x-vp[2]*0.5;
+	double v = y-vp[3]*0.5;
+	//trans[0] *= s;
+	//trans[1] = s*trans[1]+u-s*u;
+	//trans[2] = s*trans[2]+v-s*v;
+
+	//std::cout << u << " " << v << " " << s << std::endl;
+	//u *= 0.5;
+	//v *= 0.5;
+	trans[1] -= u;
+	trans[2] -= v;
+
+	trans[0] *= s;
+	trans[1] *= s;
+	trans[2] *= s;
+
+	trans[1] += u;
+	trans[2] += v;	
+
+
+
+}
+
 } // namespace
 
 

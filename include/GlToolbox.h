@@ -28,6 +28,8 @@ static void transform_to(const double* pose, const double* rotation);
 
 static void setup_texture(GLuint m_gl_texture, Image* image);
 static Vec2d screen_to_image(const double& x, const double& y, const double& scale, const int& width, const int& height);
+static Vec2d screen_to_image(double x, double y, Vec3d trans, int w, int h);
+static void zoom_screen(int x, int y, double s, Vec3d& trans);
 
 };
 

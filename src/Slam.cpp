@@ -3296,7 +3296,7 @@ void Slam::build_of4(BuildFlag flag) {
 		
 		times = 0;		
 		while(flag & BuildEpipolar) {
-			ok = calc_e_dr_of3();
+			ok = calc_e_dr_of4();
 			if (!(flag & BuildIterate) || ok || 
 				times >= Config::max_iterate_times
 			) { break; }
@@ -3428,44 +3428,48 @@ bool Slam::calc_du_of4() {
 
 	for (int i = 0; i < total; i++) {
 
-
 		u = i % m_width;
 		v = i / m_width;
 
-		iu0[0] = piu0[i];
-		iu0[1] = piv0[i];
-		it = pwit[i];
-		c = iu0[0]*iu0[0]+iu0[1]*iu0[1];
-		a = c;
-		b[0] = it*iu0[0];
-		b[1] = it*iu0[1];
-
-		if (Config::use_i1_constrain_of3) {
-			iu1[0] = pwiu1[i][0];
-			iu1[1] = pwiu1[i][1];
-
-			a += iu1[0]*iu1[0]+iu1[1]*iu1[1];
-			b[0] += it*iu1[0];
-			b[1] += it*iu1[1];			
-		}
-
+		a = 0;
+		b[0] = 0;
+		b[1] = 0;
 
 		for (int k = 0; k < 9; k++) {
 			u2 = u + offx[k];
 			v2 = v + offy[k];
 			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
 
-					iuu[0] = put[i+offid[k]][0]-put[i][0];
-					iuu[1] = put[i+offid[k]][1]-put[i][1];
-					w = pw[i+offid[k]] + Config::stable_factor_of3;
-					a += w*(c+0.5);
-					b[0] -= w*(c+0.5)*iuu[0];
-					b[1] -= w*(c+0.5)*iuu[1];
+				iu0[0] = piu0[i+offid[k]];
+				iu0[1] = piv0[i+offid[k]];
+				it = pwit[i+offid[k]];
+				a += iu0[0]*iu0[0]+iu0[1]*iu0[1];
+				b[0] -= it*iu0[0];
+				b[1] -= it*iu0[1];
+
+				if (Config::use_i1_constrain_of3) {
+					iu1[0] = pwiu1[i+offid[k]][0];
+					iu1[1] = pwiu1[i+offid[k]][1];
+
+					a += iu1[0]*iu1[0]+iu1[1]*iu1[1];
+					b[0] -= it*iu1[0];
+					b[1] -= it*iu1[1];			
+				}				
+
+				iuu[0] = put[i+offid[k]][0]-put[i][0];
+				iuu[1] = put[i+offid[k]][1]-put[i][1];
+				w = pw[i+offid[k]] + Config::stable_factor_of3;
+				w *= Config::du_smooth_lamda_of3;
+				//w = Config::stable_factor_of3;;
+				a += w;//*(c+0.5);
+				b[0] += w*iuu[0];
+				b[1] += w*iuu[1];
+
 			}
 		}
 
-		pdut[i][0] = -b[0]/(a+0.01);
-		pdut[i][1] = -b[1]/(a+0.01);
+		pdut[i][0] = b[0]/(a+0.01);
+		pdut[i][1] = b[1]/(a+0.01);
 
 	}
 
@@ -3486,24 +3490,25 @@ bool Slam::calc_e_dr_of4() {
 	float* pwe = (float*)m_key->epi_weight->data();
 	Vec2f* pdut = (Vec2f*)m_key->dut->data();
 
-	 Intrinsic in = m_key->intrinsic;
-	 double f1 = 1.0 / in.f;
-	 double m0[3], m1[3], x0[3], x1[3], x10[3], du[2];
-	 Vec9d iR = MatrixToolbox::inv_matrix_3x3(m_frame->rotation);
-	 const double* R = iR.val;
-	 const double* e = m_frame->epi_point.val;
-	 double c, wo, we, ae[3], ar[3], ar0[3];
-	 double Ae[9], Ar[9], Br[3];
+	Intrinsic in = m_key->intrinsic;
+	double f1 = 1.0 / in.f;
+	double m0[3], m1[3], x0[3], x1[3], x10[3], du[2];
+	Vec9d iR = MatrixToolbox::inv_matrix_3x3(m_frame->rotation);
+	const double* R = iR.val;
+	const double* e = m_frame->epi_point.val;
+	bool first = m_frame->epi_point.length2() < 0.5;
+	double c, wo, we, ae[3], ar[3], ar0[3];
+	double Ae[9], Ar[9], Br[3];
 
-	 memset(Ae, 0, sizeof(Ae));
-	 memset(Ar, 0, sizeof(Ar));
-	 memset(Br, 0, sizeof(Br));
-	 memset(ae, 0, sizeof(ae));
- 	 m0[2] = 1;
- 	 m1[2] = 1;
-	 x10[2] = 1;
-	 x0[2] = 1;
-	 x1[2] = 1;
+	memset(Ae, 0, sizeof(Ae));
+	memset(Ar, 0, sizeof(Ar));
+	memset(Br, 0, sizeof(Br));
+	memset(ae, 0, sizeof(ae));
+	m0[2] = 1;
+	m1[2] = 1;
+	x10[2] = 1;
+	x0[2] = 1;
+	x1[2] = 1;
 
 	for (int i = 0; i < total; i++) {
 
@@ -3527,12 +3532,13 @@ bool Slam::calc_e_dr_of4() {
 		pdut[i][0] = du[0];
 		pdut[i][1] = du[1];
 
-		we = du[0]*e[0]+du[1]*e[1]-
-			(du[0]*x0[0]+du[1]*x0[1])*e[2];
+		we = first ? 1 :
+			du[0]*e[0]+du[1]*e[1]-(du[0]*x0[0]+du[1]*x0[1])*e[2];
 		we *= f1;
+		if (we < 0) { we = 0; }
 		pwe[i] = we;
 		wo = we;//pwo[i];
-		if (wo < 0.001) { wo = 0.001; }
+		//if (wo < 0.001) { wo = 0.001; }
 
 		ae[0] += wo*du[0];
 		ae[1] += wo*du[1];
@@ -3570,13 +3576,13 @@ bool Slam::calc_e_dr_of4() {
 	Ar[8] += 0.1;
 
 
-	if (m_frame->epi_point.length2() < 0.5
-	 || !Config::only_calc_epi_dr) {
+	//if (m_frame->epi_point.length2() < 0.5
+	 //|| !Config::only_calc_epi_dr) {
 		double n = sqrt(ae[0]*ae[0]+ae[1]*ae[1]+ae[2]*ae[2]);
 		m_frame->epi_point[0] = ae[0]/n;
 		m_frame->epi_point[1] = ae[1]/n;
 		m_frame->epi_point[2] = ae[2]/n;		
-	}
+	//}
 
 		
 	Vec9d iAr = MatrixToolbox::inv_matrix_3x3(Ar);
@@ -3586,6 +3592,10 @@ bool Slam::calc_e_dr_of4() {
 			iAr[6]*Br[0]+iAr[7]*Br[1]+iAr[8]*Br[2],
 
 	};
+
+	dr[0] *= 0.5;
+	dr[1] *= 0.5;
+	dr[2] *= 0.5;
 	MatrixToolbox::update_rotation(m_frame->rotation, dr);
 	m_frame->rotation_warp(m_key->warp);
 

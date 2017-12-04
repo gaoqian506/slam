@@ -84,6 +84,8 @@ View::View(ViewContent* vc) {
 	m_display_index = 0;
 	m_key_index = 0;
 	m_trans_2d[0] = 1;
+	//m_trans_2d[1] = 100;
+	//m_trans_2d[2] = 100;
 
 	glGenTextures(1, &m_gl_texture);
 	m_current_image = 0;
@@ -198,6 +200,7 @@ void View::keyboard(unsigned char key,int x,int y) {
 		m_content->build((ViewContent::BuildFlag)(
 			ViewContent::BuildReadFrame + 
 			ViewContent::BuildOpticalFlow +
+			ViewContent::BuildEpipolar +
 			ViewContent::BuildKeyframe +
 			ViewContent::BuildIterate +
 			ViewContent::BuildSequence
@@ -316,14 +319,18 @@ void View::mouse(int button, int state, int x, int y) {
 		if (m_display_aspect == DisplaySpace) {
 			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
 		}
-		else { m_trans_2d[0] *= 1.25; }
+		else {
+			GlToolbox::zoom_screen(x, y, 1.25, m_trans_2d);
+		}
 		glutPostRedisplay();
 		break;
 	case 4:
 		if (m_display_aspect == DisplaySpace) {
 			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
 		}
-		else { m_trans_2d[0] *= 0.8; }
+		else {
+			GlToolbox::zoom_screen(x, y, 0.8, m_trans_2d);
+		}
 		glutPostRedisplay();
 		break;
 	}
@@ -355,7 +362,16 @@ void View::passive_mouse_move(int x, int y) {
 	//std::cout << "passive_mouse_move:" << dx << "," << dy << std::endl;
 
 	if (m_current_image) {
-		m_pixel_pos = GlToolbox::screen_to_image(x, y, m_trans_2d[0], m_current_image->width(), m_current_image->height());
+		// m_pixel_pos = GlToolbox::screen_to_image(
+		// 	x, y, m_trans_2d[0], 
+		// 	m_current_image->width(), 
+		// 	m_current_image->height()
+		// );
+		m_pixel_pos = GlToolbox::screen_to_image(
+			x, y, m_trans_2d, 
+			m_current_image->width(), 
+			m_current_image->height()
+		);		
 		glutPostRedisplay();
 	}
 
@@ -411,10 +427,11 @@ void View::draw_image(Image* image) {
 	glPushMatrix();
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
-
-	
 	GlToolbox::orthogonal_pixel(GlToolbox::Center);
+	glTranslated(m_trans_2d[1], m_trans_2d[2], 0);
 	glScaled(m_trans_2d[0], m_trans_2d[0], 1);
+	//std::cout << m_trans_2d[0] << " " << m_trans_2d[1] << " " << m_trans_2d[2] << std::endl;
+
 	int w = image->width();
 	int h = image->height();
 	
@@ -462,6 +479,7 @@ void View::draw_field(Image* field, Image* weight/* = NULL*/) {
 	glPushMatrix();
 	
 	GlToolbox::orthogonal_pixel(GlToolbox::Center);
+	glTranslated(m_trans_2d[1], m_trans_2d[2], 0);
 	glScaled(m_trans_2d[0], m_trans_2d[0], 1);
 	int w = field->width();
 	int h = field->height();
@@ -656,6 +674,7 @@ void View::draw_optical_flow(Image* of) {
 	glPushMatrix();
 	
 	GlToolbox::orthogonal_pixel(GlToolbox::Center);
+	glTranslated(m_trans_2d[1], m_trans_2d[2], 0);
 	glScaled(m_trans_2d[0], m_trans_2d[0], 1);
 	int w = of->width();
 	int h = of->height();
