@@ -367,6 +367,8 @@ void View::passive_mouse_move(int x, int y) {
 		// 	m_current_image->width(), 
 		// 	m_current_image->height()
 		// );
+	std::cout << "View::draw_content" << std::endl;
+
 		m_pixel_pos = GlToolbox::screen_to_image(
 			x, y, m_trans_2d, 
 			m_current_image->width(), 
@@ -470,6 +472,8 @@ void View::draw_field(Image* field, Image* weight/* = NULL*/) {
 
 
 	if(!field) { return; }
+
+	m_current_image = field;
 	assert(field->channels() == 2 && 
 		field->type() == Image::Float32);
 

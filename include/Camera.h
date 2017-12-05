@@ -32,6 +32,7 @@ public:
 
 	Vec3d epi_point;
 	Vec3d pos;
+	Vec3d alpha;
 	Vec9d rotation;
 	double movement;
 	double radius;
@@ -54,6 +55,7 @@ public:
 	Image* optical_flow;
 	//Image* m_grad_residual;
 	Image* dut;	
+	Image* eof;
 };
 
 

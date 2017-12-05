@@ -51,6 +51,10 @@ public:
 		Of4,		// E(e) = w dot(du, ux e);
 					// E(dr) = w dot((x0+xr dr), cross(x1, e));
 					// move mediat result to keyframe
+		Ofd,		// optical flow and intensity
+		Lsd5,	 	// E(dt) = w(dot(It, dt)-dg)^2
+					// E(dr) = w(dot(Ir, dr)-dg)^2
+					// w = dot(iu0, wiu1);
 	};
 
 	static int max_width;

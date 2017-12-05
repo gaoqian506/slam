@@ -548,6 +548,12 @@ void Slam::build(BuildFlag flag/* = BuildAll*/) {
 	case Config::Of4:
 		build_of4(flag);
 		break;
+	case Config::Ofd:
+		build_of4(flag);
+		break;	
+	case Config::Lsd5:
+		build_lsd5(flag);
+		break;	
 	}
 
 }
@@ -2707,7 +2713,7 @@ bool Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 	MatrixToolbox::update_rotation(m_frame->rotation, dr);
 	m_frame->rotation_warp(m_key->warp);
 
-	return true;
+	return false;
 }
 
 bool Slam::calc_t_of3() {
@@ -3296,7 +3302,7 @@ void Slam::build_of4(BuildFlag flag) {
 		
 		times = 0;		
 		while(flag & BuildEpipolar) {
-			ok = calc_e_dr_of3();
+			ok = calc_e_dr_of4();
 			if (!(flag & BuildIterate) || ok || 
 				times >= Config::max_iterate_times
 			) { break; }
@@ -3535,7 +3541,7 @@ bool Slam::calc_e_dr_of4() {
 		we = first ? 1 :
 			du[0]*e[0]+du[1]*e[1]-(du[0]*x0[0]+du[1]*x0[1])*e[2];
 		we *= f1;
-		if (we < 0) { we = 0; }
+		//if (we < 0) { we = 0; }
 		pwe[i] = we;
 		wo = we;//pwo[i];
 		//if (wo < 0.001) { wo = 0.001; }
@@ -3602,6 +3608,536 @@ bool Slam::calc_e_dr_of4() {
 	return true;
 
 }
+
+
+void Slam::build_ofd(BuildFlag flag) {
+
+	Image* image = NULL;
+	Image* resized = NULL;
+	int times = 0;
+	int steps = 0;
+	bool ok;
+	while(true) {
+		if ((flag & BuildReadFrame) && m_source->read(image)) {
+			image->resize(resized);
+			initialize(resized);
+			preprocess(resized);
+		}
+		times = 0;
+		while(flag & BuildOpticalFlow) {
+			prepare_du_ofd();
+			ok = calc_du_ofd();
+			//->add(m_dut);
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterate_times
+			) { break; }
+			times++;
+		}
+		
+		times = 0;		
+		while(flag & BuildEpipolar) {
+			ok = calc_dr_ofd();
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterate_times
+			) { break; }
+			times++;
+		}
+		/*
+		while(flag & BuildTranslate) {
+			ok = calc_t_of3();
+			if (!(flag & BuildIterate) || ok) { break; }
+		}
+		if (flag & BuildDepth) {
+			update_depth_of3();
+			unproject_points_of3();
+		}
+		*/
+		if (flag & BuildKeyframe) {
+			update_keyframe(resized);
+		}
+		steps++;
+		if (!(flag & BuildSequence) || 
+			steps >= Config::build_steps)
+		{ break; }
+		if (m_display_delegate) {
+			m_display_delegate->display_with(this);
+		}
+	}
+	if (image) { delete image; }
+	if (resized) { delete resized; }	
+}
+void Slam::prepare_du_ofd() {
+
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	double m[2], w;
+	float *pfi1, *pfiu, *pfiv;
+	double min_w = Config::min_weight_of3;
+
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+	float* pi0 = (float*)m_key->gray->data();
+	float* pi1 = (float*)m_frame->gray->data();
+	float* pit = (float*)m_key->residual->data();
+	float* pwi1 = (float*)m_key->warp->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* pw = (float*)m_key->of_weight->data();
+
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* piu1 = (float*)m_frame->gradient[0]->data();
+	float* piv1 = (float*)m_frame->gradient[1]->data();
+	Vec2f* peof = (Vec2f*)m_key->eof->data();
+
+	double dr[6] = {
+		m_frame->pos[0],
+		m_frame->pos[1],
+		m_frame->pos[2],
+		m_frame->alpha[0],
+		m_frame->alpha[1],
+		m_frame->alpha[2]
+	};
+	double a[12];
+
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width;
+		v = i / m_width;
+
+		m[0] = u + put[i][0];
+		m[1] = v + put[i][1];
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			pm[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+
+			pfi1 = pi1 + v * m_width + u;
+			pfiu = piu1 + v * m_width + u;
+			pfiv = piv1 + v * m_width + u;
+			pwi1[i] = SAMPLE_2D(pfi1[0], pfi1[1], pfi1[m_width], pfi1[m_width+1], m[0], m[1]);
+			pit[i] = pwi1[i] - pi0[i];
+			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
+			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
+			w = piu0[i]*pwiu1[i][0]+piv0[i]*pwiu1[i][1];
+			if (w < 0) { w = 0; }
+			pw[i] = w;
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			pm[i] = 0;
+			pit[i] = 0;
+			pwi1[i] = 0;
+			pwiu1[i] = 0;
+			pw[i] = 0;
+		}
+	}
+
+}
+bool Slam::calc_du_ofd() {
+
+	std::cout << "Slam::calc_du_ofd" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	float* pwit = (float*)m_key->residual->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	int u, v, u2, v2;
+	float w, W, iu0[2], iu1[2];//, d;
+	double A[4], iA[4], B[2], it, iuu[2], idet, iuiu[4];
+	double lamda = Config::du_smooth_lamda_of3;
+	double s = Config::stable_factor_of3;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	double a, b[2], c;
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		a = 0;
+		b[0] = 0;
+		b[1] = 0;
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+
+				iu0[0] = piu0[i+offid[k]];
+				iu0[1] = piv0[i+offid[k]];
+				it = pwit[i+offid[k]];
+				a += iu0[0]*iu0[0]+iu0[1]*iu0[1];
+				b[0] -= it*iu0[0];
+				b[1] -= it*iu0[1];
+
+				if (Config::use_i1_constrain_of3) {
+					iu1[0] = pwiu1[i+offid[k]][0];
+					iu1[1] = pwiu1[i+offid[k]][1];
+
+					a += iu1[0]*iu1[0]+iu1[1]*iu1[1];
+					b[0] -= it*iu1[0];
+					b[1] -= it*iu1[1];			
+				}				
+
+				iuu[0] = put[i+offid[k]][0]-put[i][0];
+				iuu[1] = put[i+offid[k]][1]-put[i][1];
+				w = pw[i+offid[k]] + Config::stable_factor_of3;
+				w *= Config::du_smooth_lamda_of3;
+				//w = Config::stable_factor_of3;;
+				a += w;//*(c+0.5);
+				b[0] += w*iuu[0];
+				b[1] += w*iuu[1];
+
+			}
+		}
+
+		pdut[i][0] = b[0]/(a+0.01);
+		pdut[i][1] = b[1]/(a+0.01);
+
+	}
+
+	//return is ok?
+	m_key->optical_flow->add(m_key->dut);
+	return false;
+
+}
+bool Slam::calc_dr_ofd() {
+
+/*
+
+	std::cout << "Slam::calc_e_dr_of4" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+	float* pwo = (float*)m_key->of_weight->data();
+	float* pwe = (float*)m_key->epi_weight->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
+
+	Intrinsic in = m_key->intrinsic;
+	double f1 = 1.0 / in.f;
+	double m0[3], m1[3], x0[3], x1[3], x10[3], du[2];
+	Vec9d iR = MatrixToolbox::inv_matrix_3x3(m_frame->rotation);
+	const double* R = iR.val;
+	const double* e = m_frame->epi_point.val;
+	bool first = m_frame->epi_point.length2() < 0.5;
+	double c, wo, we, ae[3], ar[3], ar0[3];
+	double Ae[9], Ar[9], Br[3];
+
+	memset(Ae, 0, sizeof(Ae));
+	memset(Ar, 0, sizeof(Ar));
+	memset(Br, 0, sizeof(Br));
+	memset(ae, 0, sizeof(ae));
+	m0[2] = 1;
+	m1[2] = 1;
+	x10[2] = 1;
+	x0[2] = 1;
+	x1[2] = 1;
+
+	for (int i = 0; i < total; i++) {
+
+		a[k] = a[k];
+		b[j] = b[j];
+
+	}
+
+	r = b/a;
+
+	t += dt;
+	R += dr;
+	...
+
+	m_frame->rotation_warp(m_key->warp);
+*/
+	return true;	
+
+}
+
+void Slam::build_lsd5(BuildFlag flag) {
+
+
+	Image* image = NULL;
+	Image* resized = NULL;
+	int times = 0;
+	int steps = 0;
+	bool ok;
+	while(true) {
+		if ((flag & BuildReadFrame) && m_source->read(image)) {
+			image->resize(resized);
+			initialize(resized);
+			preprocess(resized);
+		}
+		times = 0;
+		while(flag & BuildOpticalFlow) {
+			prepare_dr_lsd5();
+			ok = calc_dr_lsd5();
+			//->add(m_dut);
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterate_times
+			) { break; }
+			times++;
+		}
+		/*	
+		times = 0;		
+		while(flag & BuildEpipolar) {
+			ok = calc_dr_ofd();
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterate_times
+			) { break; }
+			times++;
+		}
+	
+		while(flag & BuildTranslate) {
+			ok = calc_t_of3();
+			if (!(flag & BuildIterate) || ok) { break; }
+		}
+		if (flag & BuildDepth) {
+			update_depth_of3();
+			unproject_points_of3();
+		}
+		*/
+		if (flag & BuildKeyframe) {
+			update_keyframe(resized);
+		}
+		steps++;
+		if (!(flag & BuildSequence) || 
+			steps >= Config::build_steps)
+		{ break; }
+		if (m_display_delegate) {
+			m_display_delegate->display_with(this);
+		}
+	}
+	if (image) { delete image; }
+	if (resized) { delete resized; }	
+
+}
+
+void Slam::prepare_dr_lsd5() {
+
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	Vec3d m;
+	Vec4f x0, x1;
+	float *pfi1, *pfiu, *pfiv, w;
+
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+	float* pi0 = (float*)m_key->gray->data();
+	float* pi1 = (float*)m_frame->gray->data();
+	float* pit = (float*)m_key->residual->data();
+	float* pwi1 = (float*)m_key->warp->data();
+	float* pw = (float*)m_key->of_weight->data();
+	float* pd = (float*)m_key->depth->data();
+	Vec4f* px = (Vec4f*)m_key->points->data();
+
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* piu1 = (float*)m_frame->gradient[0]->data();
+	float* piv1 = (float*)m_frame->gradient[1]->data();
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+
+	Intrinsic in0 = m_key->intrinsic;
+	Intrinsic in1 = m_frame->intrinsic;
+	double f1 = 1.0/in0.f;
+	Vec9d R = m_frame->rotation;
+	Vec3d t = m_frame->pos;
+
+	Vec9d iR = MatrixToolbox::transpose_3x3(R);
+	double it[3] = {
+		-(iR[0]*t[0]+iR[1]*t[1]+iR[2]*t[2]),
+		-(iR[3]*t[0]+iR[4]*t[1]+iR[5]*t[2]),
+		-(iR[6]*t[0]+iR[7]*t[1]+iR[8]*t[2]),
+	};
+	R = iR;
+	t = it;
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width - in0.cx;
+		v = i / m_width - in0.cy;
+
+		x0[0] = u*f1;
+		x0[1] = v*f1;
+		x0[2] = 1;
+		x0[3] = pd[i];
+		px[i] = x0;
+
+		x1[0] = R[0]*x0[0]+R[1]*x0[1]+R[2]*x0[2]+t[0]*x0[3];
+		x1[1] = R[3]*x0[0]+R[4]*x0[1]+R[5]*x0[2]+t[1]*x0[3];
+		x1[2] = R[6]*x0[0]+R[7]*x0[1]+R[8]*x0[2]+t[2]*x0[3];
+		x1[3] = x0[3];
+		x1 /= x1[2];
+
+		m[0] = in1.f*x1[0]+in1.cx;
+		m[1] = in1.f*x1[1]+in1.cy;
+		
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			pm[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+
+			pfi1 = pi1 + v * m_width + u;
+			pfiu = piu1 + v * m_width + u;
+			pfiv = piv1 + v * m_width + u;
+			pwi1[i] = SAMPLE_2D(pfi1[0], pfi1[1], pfi1[m_width], pfi1[m_width+1], m[0], m[1]);
+			pit[i] = pwi1[i] - pi0[i];
+			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
+			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
+			w = piu0[i]*pwiu1[i][0]+piv0[i]*pwiu1[i][1];
+			if (w < 0) { w = 0; }
+			pw[i] = w;
+
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			pm[i] = 0;
+			pit[i] = 0;
+			pwi1[i] = 0;
+			pw[i] = 0;
+		}
+	}
+
+}
+
+bool Slam::calc_dr_lsd5() {
+
+
+	if (!m_key || !m_frame) { return true; }
+
+	int total = m_width * m_height;
+	int u, v, count = 0;
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pit = (float*)m_key->residual->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	double w, A[9], B[3], dg, a[3], l[3], ar[3];
+	double Ar[9], Br[3], x[3];
+	memset(A, 0, sizeof(A));
+	memset(B, 0, sizeof(B));
+	x[2] = 1;
+
+	//if (t.length2() < 0.001) { t[0] = 1; t[1] = 1; }
+	
+	for (int i = 0; i < total; i++) {
+
+		if (!pm[i]) { continue; }
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+		dg = pit[i];
+		w = pw[i];
+
+		a[0] = pd[i] * f * piu[i];
+		a[1] = pd[i] * f * piv[i];
+		a[2] = -pd[i] * (u*piu[i]+v*piv[i]);
+
+		A[0] += w*a[0]*a[0];
+		A[1] += w*a[0]*a[1];
+		A[2] += w*a[0]*a[2];
+		A[4] += w*a[1]*a[1];
+		A[5] += w*a[1]*a[2];
+		A[8] += w*a[2]*a[2];
+		
+		B[0] += w*a[0]*dg;
+		B[1] += w*a[1]*dg;
+		B[2] += w*a[2]*dg;
+
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+
+		l[0] = f * piu[i];
+		l[1] = f * piv[i];
+		l[2] = -(u*piu[i]+v*piv[i]);
+
+		ar[0] = x[1]*l[2]-x[2]*l[1];
+		ar[1] = x[2]*l[0]-x[0]*l[2];
+		ar[2] = x[0]*l[1]-x[1]*l[0];
+
+		Ar[0] += w*ar[0]*ar[0];
+		Ar[1] += w*ar[0]*ar[1];
+		Ar[2] += w*ar[0]*ar[2];
+		Ar[4] += w*ar[1]*ar[1];
+		Ar[5] += w*ar[1]*ar[2];
+		Ar[8] += w*ar[2]*ar[2];
+		
+		Br[0] += w*ar[0]*dg;
+		Br[1] += w*ar[1]*dg;
+		Br[2] += w*ar[2]*dg;		
+	}
+	
+	A[3] = A[1];
+	A[6] = A[2];
+	A[7] = A[5];
+
+	A[0] += 1;
+	A[4] += 1;
+	A[8] += 1;
+
+	Ar[3] = Ar[1];
+	Ar[6] = Ar[2];
+	Ar[7] = Ar[5];
+
+	Ar[0] += 1;
+	Ar[4] += 1;
+	Ar[8] += 1;	
+	
+	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
+
+	Vec3d dt(
+		invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2],
+		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
+		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
+	);
+	//dt *= 0.5;
+	m_frame->pos += dt;
+
+	Vec9d iAr = MatrixToolbox::inv_matrix_3x3(Ar);
+	Vec3d dr(
+		iAr[0]*Br[0]+iAr[1]*Br[1]+iAr[2]*Br[2],
+		iAr[3]*Br[0]+iAr[4]*Br[1]+iAr[5]*Br[2],
+		iAr[6]*Br[0]+iAr[7]*Br[1]+iAr[8]*Br[2]
+	);	
+	//dr *= 0.5;
+	MatrixToolbox::update_rotation(m_frame->rotation, dr);
+	//m_frame->rotation_warp(m_key->warp);
+	return false;
+
+}
+
 
 } // namespace
 

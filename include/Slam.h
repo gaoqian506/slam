@@ -97,6 +97,18 @@ private:
 	bool calc_du_of4();
 	bool calc_e_dr_of4();
 
+	void build_ofd(BuildFlag flag);
+	void prepare_du_ofd();
+	bool calc_du_ofd();
+	void prepare_dr_ofd();
+	bool calc_dr_ofd();
+
+	void build_lsd5(BuildFlag flag);
+	void prepare_dr_lsd5();
+	bool calc_dr_lsd5();	
+
+
+
 
 
 
