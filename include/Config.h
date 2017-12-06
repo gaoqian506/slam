@@ -74,6 +74,12 @@ public:
 	static int build_steps;
 	static bool only_calc_epi_dr;
 	static bool use_of_smooth_of4;
+	static double min_depth_weight;
+
+	static bool use_i1_constrain_lsd5;
+	static double min_smooth_weight_lsd5;
+	static double smooth_lamda_lsd5;
+	static int max_iterate_times_lsd5;
 
 
 };

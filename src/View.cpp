@@ -193,19 +193,20 @@ void View::keyboard(unsigned char key,int x,int y) {
 		glutPostRedisplay();
 		break;
 	case 32:	// space
-		if (m_display_aspect == DisplaySpace) {
-			MatrixToolbox::identity(m_view_matrix);
-		}
-		else {
+		//if (m_display_aspect == DisplaySpace) {
+		//	MatrixToolbox::identity(m_view_matrix);
+		//}
+		//else {
 		m_content->build((ViewContent::BuildFlag)(
 			ViewContent::BuildReadFrame + 
 			ViewContent::BuildOpticalFlow +
 			ViewContent::BuildEpipolar +
+			ViewContent::BuildDepth +
 			ViewContent::BuildKeyframe +
 			ViewContent::BuildIterate +
 			ViewContent::BuildSequence
 		));
-		}	
+		//}	
 		
 		break;
 	case 'b':	// key for break
@@ -252,7 +253,13 @@ void View::special(int key,int x,int y) {
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_F4:
-		m_content->func_manualy(3);
+		m_content->build((ViewContent::BuildFlag)(
+			//ViewContent::BuildReadFrame + 
+			//ViewContent::BuildOpticalFlow
+			ViewContent::BuildDepth
+			//ViewContent::BuildKeyframe +
+			//ViewContent::BuildIterate
+		));	
 		glutPostRedisplay();
 		break;
 	case GLUT_KEY_F5:

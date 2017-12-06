@@ -151,9 +151,11 @@ Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 		m_image_name = "optical flow(8)";
 	}
 	else if (iid == 8) {
-		which1 = key ? key->dut : m_dut;
-		if (weight) { *weight = key ? key->epi_weight : NULL; }
-		m_image_name = "dut(9)";
+		which1 = key ? key->depth_weight : m_weight;
+		m_image_name = "depth weight(9)";		
+		// which1 = key ? key->dut : m_dut;
+		// if (weight) { *weight = key ? key->epi_weight : NULL; }
+		// m_image_name = "dut(9)";
 	}
 	else if (iid == 9) {
 		which1 = key ? key->of_weight : m_weight;
@@ -161,12 +163,16 @@ Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 	}	
 	else if (iid == 10) {
 		which1 = key ? key->epi_weight : m_weight;
-		m_image_name = "of weight(11)";
+		m_image_name = "epi weight(11)";
 	}	
 	else if (iid == 11) {
 		which1 = key ? key->mask : m_mask;
 		m_image_name = "mask(12)";
 	}
+	else if (iid == 12) {
+		which1 = key ? key->depth : NULL;
+		m_image_name = "depth(13)";
+	}	
 	else {
 		which1 = NULL;
 	}
@@ -477,7 +483,8 @@ char* Slam::pixel_info(const Vec2d& u, int kid) {
 		"pos:%f, %f\n"
 		"key:%f cur:%f\n"
 		"res:%f\n"
-		"of weight:%f epi_weight:%f mask:%d\n"
+		"of weight:%f epi weight:%f depth weight%f:\n"
+		"mask:%d\n"
 		"grad res: %f, %f\n"
 		"grad: %f, %f\n"
 		"of: %f, %f\n"
@@ -496,6 +503,7 @@ char* Slam::pixel_info(const Vec2d& u, int kid) {
 		key ? *((float*)key->residual->at(idx)) : 0,
 		key ? *((float*)key->of_weight->at(idx)) : 0,
 		key ? *((float*)key->epi_weight->at(idx)) : 0,
+		key ? *((float*)key->depth_weight->at(idx)) : 0,
 		key ? *((unsigned char*)key->mask->at(idx)) : 0,
 		m_grad_residual ? ((Vec2f*)m_grad_residual->data())[idx][0] : 0,
 		m_grad_residual ? ((Vec2f*)m_grad_residual->data())[idx][1] : 0,
@@ -3067,12 +3075,13 @@ void Slam::create_keyframe(Image* image) {
 	m_key->epi_weight = new CvImage(m_width, m_height, Image::Float32);
 	m_key->optical_flow = new CvImage(m_width, m_height, Image::Float32, 2);
 	m_key->dut = new CvImage(m_width, m_height, Image::Float32, 2);
+	m_key->ddepth = new CvImage(m_width, m_height, Image::Float32);
 
 	//if (pre_key) {
 	//	pre_key->depth->set(0);
 	//}
 	m_key->depth->set(0.1);
-	m_key->depth_weight->set(10);
+	m_key->depth_weight->set(Config::min_depth_weight);
 
 
 	m_key->gradient[0]->sobel_x(m_grad_grad[0]);
@@ -3897,7 +3906,7 @@ void Slam::build_lsd5(BuildFlag flag) {
 			ok = calc_dr_lsd5();
 			//->add(m_dut);
 			if (!(flag & BuildIterate) || ok || 
-				times >= Config::max_iterate_times
+				times >= Config::max_iterate_times_lsd5
 			) { break; }
 			times++;
 		}
@@ -3915,11 +3924,13 @@ void Slam::build_lsd5(BuildFlag flag) {
 			ok = calc_t_of3();
 			if (!(flag & BuildIterate) || ok) { break; }
 		}
-		if (flag & BuildDepth) {
-			update_depth_of3();
-			unproject_points_of3();
-		}
 		*/
+		if (flag & BuildDepth) {
+			prepare_dr_lsd5();
+			update_depth_lsd5();
+			//unproject_points_lsd5();
+		}
+		
 		if (flag & BuildKeyframe) {
 			update_keyframe(resized);
 		}
@@ -3968,14 +3979,14 @@ void Slam::prepare_dr_lsd5() {
 	Vec9d R = m_frame->rotation;
 	Vec3d t = m_frame->pos;
 
-	Vec9d iR = MatrixToolbox::transpose_3x3(R);
-	double it[3] = {
-		-(iR[0]*t[0]+iR[1]*t[1]+iR[2]*t[2]),
-		-(iR[3]*t[0]+iR[4]*t[1]+iR[5]*t[2]),
-		-(iR[6]*t[0]+iR[7]*t[1]+iR[8]*t[2]),
-	};
-	R = iR;
-	t = it;
+	// Vec9d iR = MatrixToolbox::transpose_3x3(R);
+	// double it[3] = {
+	// 	-(iR[0]*t[0]+iR[1]*t[1]+iR[2]*t[2]),
+	// 	-(iR[3]*t[0]+iR[4]*t[1]+iR[5]*t[2]),
+	// 	-(iR[6]*t[0]+iR[7]*t[1]+iR[8]*t[2]),
+	// };
+	// R = iR;
+	// t = it;
 
 	for (int i = 0; i < total; i++) {
 	
@@ -4118,23 +4129,122 @@ bool Slam::calc_dr_lsd5() {
 	Vec9d invA = MatrixToolbox::inv_matrix_3x3(A);
 
 	Vec3d dt(
-		invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2],
-		invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2],
-		invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2]
+		-(invA[0]*B[0]+invA[1]*B[1]+invA[2]*B[2]),
+		-(invA[3]*B[0]+invA[4]*B[1]+invA[5]*B[2]),
+		-(invA[6]*B[0]+invA[7]*B[1]+invA[8]*B[2])
 	);
 	//dt *= 0.5;
 	m_frame->pos += dt;
 
 	Vec9d iAr = MatrixToolbox::inv_matrix_3x3(Ar);
 	Vec3d dr(
-		iAr[0]*Br[0]+iAr[1]*Br[1]+iAr[2]*Br[2],
-		iAr[3]*Br[0]+iAr[4]*Br[1]+iAr[5]*Br[2],
-		iAr[6]*Br[0]+iAr[7]*Br[1]+iAr[8]*Br[2]
+		-(iAr[0]*Br[0]+iAr[1]*Br[1]+iAr[2]*Br[2]),
+		-(iAr[3]*Br[0]+iAr[4]*Br[1]+iAr[5]*Br[2]),
+		-(iAr[6]*Br[0]+iAr[7]*Br[1]+iAr[8]*Br[2])
 	);	
 	//dr *= 0.5;
 	MatrixToolbox::update_rotation(m_frame->rotation, dr);
 	//m_frame->rotation_warp(m_key->warp);
 	return false;
+
+}
+
+void Slam::update_depth_lsd5() {
+
+
+	std::cout << "Slam::update_depth_lsd5" << std::endl;
+
+	if (!m_key || !m_frame) { return; }
+	int total = m_width * m_height;
+	float* pwit = (float*)m_key->residual->data();
+	//Vec2f* pdut = (Vec2f*)m_key->dut->data();
+	//Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+
+	float* pdd = (float*)m_key->ddepth->data();
+	float* pd = (float*)m_key->depth->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	int u, v, u2, v2;
+	//float w, W, iu0[2], iu1[2];//, d;
+	//double A[4], iA[4], B[2], it, iuu[2], idet, iuiu[4];
+	//double lamda = Config::du_smooth_lamda_of3;
+	//double s = Config::stable_factor_of3;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	Intrinsic in = m_key->intrinsic;
+	double f1 = 1.0/in.f;
+	const double* t = m_frame->pos.val;
+
+	double a, b, c, ddk, x[2], it, w, iu[2];
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		a = 0;
+		b = 0;
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+
+				if (!pm[i+offid[k]]) { continue; }
+				x[0] = (u2-in.cx)*f1;
+				x[1] = (v2-in.cy)*f1;
+				iu[0] = piu0[i+offid[k]];
+				iu[1] = piv0[i+offid[k]];
+				it = pwit[i+offid[k]];
+
+				c = pd[i]*(iu[0]*t[0]+iu[1]*t[1]-
+					(iu[0]*x[0]+iu[1]*x[1])*t[2]);
+				a += c*c;
+				b += c*it*f1;
+
+				if (Config::use_i1_constrain_lsd5) {
+					iu[0] = pwiu1[i+offid[k]][0];
+					iu[1] = pwiu1[i+offid[k]][1];
+
+					c = pd[i]*(iu[0]*t[0]+iu[1]*t[1]-
+						(iu[0]*x[0]+iu[1]*x[1])*t[2]);
+					a += c*c;
+					b += c*it*f1;
+				}
+
+				ddk = pd[i+offid[k]]-pd[i];
+
+				w = pw[i+offid[k]] + Config::min_smooth_weight_lsd5;
+				w *= Config::smooth_lamda_lsd5;
+
+				a += w;
+				b -= w*ddk;
+
+			}
+		}
+
+		pdd[i] = -b / a;
+
+	}
+	//return is ok?
+	m_key->depth->add(m_key->ddepth);
+
+
+}
+void Slam::unproject_points_lsd5() {
+
 
 }
 

@@ -106,6 +106,8 @@ private:
 	void build_lsd5(BuildFlag flag);
 	void prepare_dr_lsd5();
 	bool calc_dr_lsd5();	
+	void update_depth_lsd5();
+	void unproject_points_lsd5();	
 
 
 

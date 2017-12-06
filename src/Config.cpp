@@ -24,4 +24,10 @@ namespace ww {
 	int Config::build_steps = 10;
 	bool Config::only_calc_epi_dr = false;
 	bool Config::use_of_smooth_of4 = true;
+	double Config::min_depth_weight = 0.001;
+
+	bool Config::use_i1_constrain_lsd5 = true;
+	double Config::min_smooth_weight_lsd5 = 0.1;
+	double Config::smooth_lamda_lsd5 = 1;
+	int Config::max_iterate_times_lsd5 = 10;
 }

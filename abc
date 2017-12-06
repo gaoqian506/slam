@@ -1,6 +1,51 @@
 
 
 
+
+
+
+	std::cout << "Slam::update_depth_lsd5" << std::endl;
+
+	if (!m_key || !m_frame) { return; }
+
+	const double* t = m_frame->pos.val;
+
+	int total = m_width * m_height;
+	float* pit = (float*)m_key->residual->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pw = (float*)m_key->depth_weight->data();
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+
+	 Intrinsic in = m_key->intrinsic;
+	 double f1 = 1.0/in.f;
+	 double w1, w2, m0[2], x[2], a, iu[2];
+
+	for (int i = 0; i < total; i++) {
+
+		if (!pm[i]) { continue; }
+
+		m0[0] = i % m_width - in.cx;
+		m0[1] = i / m_width - in.cy;
+		x[0] = m0[0]*f1;
+		x[1] = m0[1]*f1;
+
+		iu[0] = piu[i];
+		iu[1] = piv[i];
+		w1 = pw[i];
+
+		a = pd[i]*(iu[0]*t[0]+iu[1]*t[1]-
+			(iu[0]*x[0]+iu[1]*x[1])*t[2]);
+		w2 = a*a;
+		pd[i] -= a*pit[i]*f1/(w1+w2);
+		w1 = 0.5*(w1+w2);
+		if (w1 < Config::min_depth_weight)
+		{ w1 = Config::min_depth_weight; }
+		pw[i] = w1;
+	}
+
 bool Slam::calc_e_dr_of3(bool only_dr/* = false*/) {
 
 

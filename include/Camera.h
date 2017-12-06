@@ -56,6 +56,7 @@ public:
 	//Image* m_grad_residual;
 	Image* dut;	
 	Image* eof;
+	Image* ddepth;
 };
 
 
