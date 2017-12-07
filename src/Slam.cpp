@@ -3110,8 +3110,8 @@ void Slam::create_keyframe(Image* image) {
 	//if (pre_key) {
 	//	pre_key->depth->set(0);
 	//}
-	//m_key->depth->set(0.1);
-	m_key->depth->random(0.01, 0.1);
+	m_key->depth->set(0.1);
+	//m_key->depth->random(0.01, 0.1);
 	m_key->depth_weight->set(Config::min_depth_weight);
 
 
