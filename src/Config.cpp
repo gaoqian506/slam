@@ -9,7 +9,7 @@ namespace ww {
 	//Config::Method Config::method = Config::Entropy5;
 	//Config::Method Config::method = Config::Lsd3;
 	//Config::Method Config::method = Config::Epi2;
-	Config::Method Config::method = Config::Lsd5;
+	Config::Method Config::method = Config::Of5;
 	//Config::Method Config::method = Config::Gof1;
 	int Config::of_skip = 5;
 	int Config::field_skip = 1;
@@ -30,4 +30,11 @@ namespace ww {
 	double Config::min_smooth_weight_lsd5 = 0.1;
 	double Config::smooth_lamda_lsd5 = 1;
 	int Config::max_iterate_times_lsd5 = 10;
+
+	double Config::du_smooth_weight_of5 = 0.01;
+	double Config::du_smooth_lamda_of5 = 1;
+	int Config::max_iterations_of5 = 50;
+
+	bool Config::image_switch = true;
+	int Config::win_size[2] = { 500, 500 };
 }

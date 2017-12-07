@@ -67,7 +67,7 @@ View::View(ViewContent* vc) {
 
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 	glutInitWindowPosition(0, 0); 
-	glutInitWindowSize(1000, 1000);
+	glutInitWindowSize(Config::win_size[0], Config::win_size[1]);
 	glutCreateWindow("OpenGL 3D View");
 	glutDisplayFunc(g_display);
 	//glutIdleFunc(g_idle);
@@ -86,6 +86,8 @@ View::View(ViewContent* vc) {
 	m_trans_2d[0] = 1;
 	//m_trans_2d[1] = 100;
 	//m_trans_2d[2] = 100;
+	m_image = NULL;
+	m_weight = NULL;
 
 	glGenTextures(1, &m_gl_texture);
 	m_current_image = 0;
@@ -134,13 +136,12 @@ void View::display() {
 		break;
 	case DisplayImage:
 		glColor3d(0.72, 0.38, 0.49);
-		Image* weight = 0;
-		Image* image = m_content->get_debug_image(
-			m_display_index, m_key_index, &weight);
-		if (image && image->channels() == 2) {
-			draw_field(image, weight);
+		m_image = m_content->get_debug_image(
+			m_display_index, m_key_index, &m_weight);
+		if (m_image && m_image->channels() == 2) {
+			draw_field(m_image, m_weight);
 		}
-		else { draw_image(image); }
+		else { draw_image(m_image); }		
 		
 		//glColor3d(0.92, 0.56, 0.37);
 		//draw_optical_flow(m_content->get_optical_flow());
@@ -174,22 +175,35 @@ void View::keyboard(unsigned char key,int x,int y) {
 	case 57:	// '9'
 		m_display_aspect = DisplayImage;
 		m_display_index = key - 49;
+		// m_image = m_content->get_debug_image(
+		// 	m_display_index, m_key_index, &m_weight);
 		glutPostRedisplay();
 		break;
 	case 'w':	// move forward
-		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
+		if (m_display_aspect == DisplaySpace) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
+		}
 		glutPostRedisplay();
 		break;
 	case 's':	// move backward
-		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
+		if (m_display_aspect == DisplaySpace) {	
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
+		}
+		else {
+			Config::image_switch = !Config::image_switch;
+		}
 		glutPostRedisplay();
 		break;
 	case 'a':	// move left
-		SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
+		if (m_display_aspect == DisplaySpace) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
+		}
 		glutPostRedisplay();
 		break;
 	case 'd':	// move right
-		SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
+		if (m_display_aspect == DisplaySpace) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
+		}
 		glutPostRedisplay();
 		break;
 	case 32:	// space
@@ -206,6 +220,7 @@ void View::keyboard(unsigned char key,int x,int y) {
 			ViewContent::BuildIterate +
 			ViewContent::BuildSequence
 		));
+		glutPostRedisplay();
 		//}	
 		
 		break;
@@ -280,6 +295,8 @@ void View::special(int key,int x,int y) {
 		}
 		else {
 			m_display_index++;
+			// m_image = m_content->get_debug_image(
+			// 	m_display_index, m_key_index, &m_weight);			
 		}
 		glutPostRedisplay();
 		break;
@@ -290,6 +307,8 @@ void View::special(int key,int x,int y) {
 		}
 		else {
 			m_display_index = m_display_index ? m_display_index-1 : 0;
+			// m_image = m_content->get_debug_image(
+			// 	m_display_index, m_key_index, &m_weight);
 		}
 		glutPostRedisplay();
 		break;

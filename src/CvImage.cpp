@@ -208,6 +208,11 @@ void CvImage::warp(Vec9d H, Image*& out) {
 
 }
 
+void CvImage::random(double low, double high) {
+
+	cv::randu(m_cv_mat, low, high);
+}
+
 //float CvImage::sample(const float& a, const float& b) {
 
 	//assert(m_cv_mat.type() == CV_32F);

@@ -71,6 +71,8 @@ private:
 	Vec16d m_view_matrix;
 	int m_point_size;
 	Vec2d m_epi_point;
+	Image* m_image;
+	Image* m_weight;
 	
 
 

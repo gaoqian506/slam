@@ -55,6 +55,10 @@ public:
 		Lsd5,	 	// E(dt) = w(dot(It, dt)-dg)^2
 					// E(dr) = w(dot(Ir, dr)-dg)^2
 					// w = dot(iu0, wiu1);
+		Of5,		// E(r) = w a dr = b
+					// w = p(ofr) * dot(iu0, iu1);
+					// a = ur
+					// b = ofr
 	};
 
 	static int max_width;
@@ -80,6 +84,13 @@ public:
 	static double min_smooth_weight_lsd5;
 	static double smooth_lamda_lsd5;
 	static int max_iterate_times_lsd5;
+
+	static double du_smooth_weight_of5;
+	static double du_smooth_lamda_of5;
+	static int max_iterations_of5;	
+
+	static bool image_switch;
+	static int win_size[2];
 
 
 };

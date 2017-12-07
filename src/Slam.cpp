@@ -111,14 +111,20 @@ Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 	if (kid < m_keyframes.size()) {
 		key = m_cameras[kid];
 	}
-
 	if (iid == 0 && m_frame) {
 		which1 = m_frame->gray;
 		m_image_name = "current gray(1)";
 	}
 	else if (iid == 1) {
-		which1 = key ? key->warp : m_warp;
-		m_image_name = "warp(2)";
+		if (Config::image_switch) {
+			which1 = key ? key->warp : m_warp;
+			m_image_name = "warp(2)";			
+		}
+		else {
+			which1 = m_warp;
+			m_image_name = "rotation warp(2)";
+		}
+
 	}
 	else if (iid == 2 && key) {
 		which1 = key->gray;
@@ -129,53 +135,69 @@ Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 		m_image_name = "residual(4)";
 	}
 	else if (iid == 4 && key) {
-		which1 = key->gradient[0];
-		which2 = key->gradient[1];
-		if (weight) { *weight = key ? key->of_weight : NULL; }
-		m_image_name = "key grad(5)";
+		if (Config::image_switch) {
+			which1 = key->optical_flow;
+			if (weight) { *weight = key->of_weight; }
+			m_image_name = "optical flow(5)";	
+		}
+		else {
+			which1 = key->eof;
+			if (weight) { *weight = key->epi_weight; }
+			m_image_name = "eof(5)";
+		}
+
 	}
-	else if (iid == 5 && m_frame) {
-		which1 = m_frame->gradient[0];
-		which2 = m_frame->gradient[1];
-		if (weight) { *weight = key ? key->of_weight : NULL; }
-		m_image_name = "frame grad(6)";
-	}
-	else if (iid == 6) {
-		which1 = key ? key->warp_gradient : m_gradient;
-		if (weight) { *weight = key ? key->of_weight : NULL; }
-		m_image_name = "warp gradient(7)";
-	}		
-	else if (iid == 7) {
-		which1 = key ? key->optical_flow : m_of;
-		if (weight) { *weight = key ? key->of_weight : NULL; }
-		m_image_name = "optical flow(8)";
-	}
-	else if (iid == 8) {
-		which1 = key ? key->depth_weight : m_weight;
+	else if (iid == 5 && key) {
+		which1 = key->of_residual;
+		if (weight) { *weight = key->epi_weight; }
+		m_image_name = "of_residual(6)";
+	}	
+	else if (iid == 6 && key) {
+		which1 = key->of_weight;
+		m_image_name = "of weight(7)";
+	}	
+	else if (iid == 7 && key) {
+		which1 = key->epi_weight;
+		m_image_name = "epi weight(8)";
+	}	
+	else if (iid == 8 && key) {
+		which1 = key->depth_weight;
 		m_image_name = "depth weight(9)";		
 		// which1 = key ? key->dut : m_dut;
 		// if (weight) { *weight = key ? key->epi_weight : NULL; }
 		// m_image_name = "dut(9)";
 	}
-	else if (iid == 9) {
-		which1 = key ? key->of_weight : m_weight;
-		m_image_name = "of weight(10)";
-	}	
-	else if (iid == 10) {
-		which1 = key ? key->epi_weight : m_weight;
-		m_image_name = "epi weight(11)";
-	}	
-	else if (iid == 11) {
-		which1 = key ? key->mask : m_mask;
-		m_image_name = "mask(12)";
+	else if (iid == 9 && key) {
+		which1 = key->mask;
+		m_image_name = "mask(10)";
 	}
-	else if (iid == 12) {
-		which1 = key ? key->depth : NULL;
-		m_image_name = "depth(13)";
+	else if (iid == 10 && key) {
+		which1 = key->depth;
+		m_image_name = "depth(11)";
+	}	
+	else if (iid == 11 && key) {
+		which1 = key->gradient[0];
+		which2 = key->gradient[1];
+		if (weight) { *weight = key->of_weight; }
+		m_image_name = "key grad(12)";
+	}
+	else if (iid == 12 && m_frame) {
+		which1 = m_frame->gradient[0];
+		which2 = m_frame->gradient[1];
+		if (weight) { *weight = key ? key->of_weight : NULL; }
+		m_image_name = "frame grad(13)";
+	}	
+	else if (iid == 13 && key) {
+		which1 = key->warp_gradient;
+		if (weight) { *weight = key->of_weight; }
+		m_image_name = "warp gradient(14)";
 	}	
 	else {
 		which1 = NULL;
 	}
+
+	//pre_iid = iid;
+	//std::cout << "pre_iid:" << pre_iid << std::endl;
 
 
 	double min, max, scale;
@@ -488,6 +510,7 @@ char* Slam::pixel_info(const Vec2d& u, int kid) {
 		"grad res: %f, %f\n"
 		"grad: %f, %f\n"
 		"of: %f, %f\n"
+		"of residual: %f, %f\n"
 		"dof: %f, %f\n"
 		"depth: %f, %f\n"
 		"e: %f, %f, %f\n"
@@ -511,6 +534,8 @@ char* Slam::pixel_info(const Vec2d& u, int kid) {
 		m_key ? ((float*)m_key->gradient[1]->at(idx))[0] : 0,
 		key ? ((Vec2f*)key->optical_flow->data())[idx][0] : 0,
 		key ? ((Vec2f*)key->optical_flow->data())[idx][1] : 0,
+		key ? ((Vec2f*)key->of_residual->data())[idx][0] : 0,
+		key ? ((Vec2f*)key->of_residual->data())[idx][1] : 0,		
 		key ? ((Vec2f*)key->dut->data())[idx][0] : 0,
 		key ? ((Vec2f*)key->dut->data())[idx][1] : 0,		
 		//pl ? pl[idx][0] : 0,
@@ -562,6 +587,9 @@ void Slam::build(BuildFlag flag/* = BuildAll*/) {
 	case Config::Lsd5:
 		build_lsd5(flag);
 		break;	
+	case Config::Of5:
+		build_of5(flag);
+		break;			
 	}
 
 }
@@ -3076,11 +3104,14 @@ void Slam::create_keyframe(Image* image) {
 	m_key->optical_flow = new CvImage(m_width, m_height, Image::Float32, 2);
 	m_key->dut = new CvImage(m_width, m_height, Image::Float32, 2);
 	m_key->ddepth = new CvImage(m_width, m_height, Image::Float32);
+	m_key->of_residual = new CvImage(m_width, m_height, Image::Float32, 2);
+	m_key->eof = new CvImage(m_width, m_height, Image::Float32, 2);
 
 	//if (pre_key) {
 	//	pre_key->depth->set(0);
 	//}
-	m_key->depth->set(0.1);
+	//m_key->depth->set(0.1);
+	m_key->depth->random(0.01, 0.1);
 	m_key->depth_weight->set(Config::min_depth_weight);
 
 
@@ -4245,6 +4276,395 @@ void Slam::update_depth_lsd5() {
 }
 void Slam::unproject_points_lsd5() {
 
+
+}
+
+
+void Slam::build_of5(BuildFlag flag) {
+
+
+	Image* image = NULL;
+	Image* resized = NULL;
+	int times = 0;
+	int steps = 0;
+	bool ok;
+	while(true) {
+		if ((flag & BuildReadFrame) && m_source->read(image)) {
+			image->resize(resized);
+			initialize(resized);
+			preprocess(resized);
+		}
+		times = 0;
+		while(flag & BuildOpticalFlow) {
+			prepare_du_of5();
+			ok = calc_du_of5();
+			//->add(m_dut);
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterations_of5
+			) { break; }
+			times++;
+		}
+		
+		times = 0;		
+		while(flag & BuildEpipolar) {
+			prepare_dr_of5();
+			ok = calc_dr_of5();
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::max_iterations_of5
+			) { break; }
+			times++;
+		}
+		/*
+		while(flag & BuildTranslate) {
+			ok = calc_t_of3();
+			if (!(flag & BuildIterate) || ok) { break; }
+		}
+		if (flag & BuildDepth) {
+			update_depth_of3();
+			unproject_points_of3();
+		}
+		*/
+		if (flag & BuildKeyframe) {
+			update_keyframe(resized);
+		}
+		steps++;
+		if (!(flag & BuildSequence) || 
+			steps >= Config::build_steps)
+		{ break; }
+		if (m_display_delegate) {
+			m_display_delegate->display_with(this);
+		}
+	}
+	if (image) { delete image; }
+	if (resized) { delete resized; }	
+}
+void Slam::prepare_du_of5() {
+
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	double m[2], w;
+	float *pfi1, *pfiu, *pfiv;
+	double min_w = Config::min_weight_of3;
+
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+	float* pi0 = (float*)m_key->gray->data();
+	float* pi1 = (float*)m_frame->gray->data();
+	float* pit = (float*)m_key->residual->data();
+	float* pwi1 = (float*)m_key->warp->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* pw = (float*)m_key->of_weight->data();
+
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* piu1 = (float*)m_frame->gradient[0]->data();
+	float* piv1 = (float*)m_frame->gradient[1]->data();
+
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width;
+		v = i / m_width;
+
+		m[0] = u + put[i][0];
+		m[1] = v + put[i][1];
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			pm[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+
+			pfi1 = pi1 + v * m_width + u;
+			pfiu = piu1 + v * m_width + u;
+			pfiv = piv1 + v * m_width + u;
+			pwi1[i] = SAMPLE_2D(pfi1[0], pfi1[1], pfi1[m_width], pfi1[m_width+1], m[0], m[1]);
+			pit[i] = pwi1[i] - pi0[i];
+			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
+			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
+			w = piu0[i]*pwiu1[i][0]+piv0[i]*pwiu1[i][1];
+			if (w < 0) { w = 0; }
+			pw[i] = w;
+			//pw[i] = exp(-p_dg[i]*p_dg[i]/0.16);
+		}
+		else { 
+			pm[i] = 0;
+			pit[i] = 0;
+			pwi1[i] = 0;
+			pwiu1[i] = 0;
+			pw[i] = 0;
+		}
+	}
+}
+bool Slam::calc_du_of5() {
+
+	std::cout << "Slam::calc_du_of5" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	float* pwit = (float*)m_key->residual->data();
+	Vec2f* pdut = (Vec2f*)m_key->dut->data();
+	Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	int u, v, u2, v2;
+	float w, iu0[2], iu1[2];//, d;
+	double it, iuu[2];
+	double lamda = Config::du_smooth_lamda_of3;
+	double s = Config::stable_factor_of3;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	double a, b[2];
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		a = 0;
+		b[0] = 0;
+		b[1] = 0;
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+
+				iu0[0] = piu0[i+offid[k]];
+				iu0[1] = piv0[i+offid[k]];
+				it = pwit[i+offid[k]];
+				a += iu0[0]*iu0[0]+iu0[1]*iu0[1];
+				b[0] -= it*iu0[0];
+				b[1] -= it*iu0[1];
+
+				if (Config::use_i1_constrain_of3) {
+					iu1[0] = pwiu1[i+offid[k]][0];
+					iu1[1] = pwiu1[i+offid[k]][1];
+
+					a += iu1[0]*iu1[0]+iu1[1]*iu1[1];
+					b[0] -= it*iu1[0];
+					b[1] -= it*iu1[1];			
+				}				
+
+				iuu[0] = put[i+offid[k]][0]-put[i][0];
+				iuu[1] = put[i+offid[k]][1]-put[i][1];
+				w = pw[i+offid[k]] + Config::stable_factor_of3;
+				w *= Config::du_smooth_lamda_of3;
+				a += w;
+				b[0] += w*iuu[0];
+				b[1] += w*iuu[1];
+
+			}
+		}
+
+		pdut[i][0] = b[0]/(a+0.01);
+		pdut[i][1] = b[1]/(a+0.01);
+
+	}
+
+	//return is ok?
+	m_key->optical_flow->add(m_key->dut);
+	return false;
+}
+void Slam::prepare_dr_of5() {
+
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	Vec3d m;
+	Vec4f x0, x1;
+
+	Vec2f* pof = (Vec2f*)m_key->optical_flow->data();
+	Vec2f* pofr = (Vec2f*)m_key->of_residual->data();
+	Vec2f* peof = (Vec2f*)m_key->eof->data();
+	float* pd = (float*)m_key->depth->data();
+	Vec4f* px = (Vec4f*)m_key->points->data();
+
+	float* pi1 = (float*)m_frame->gray->data();
+	float* pwi1 = (float*)m_key->warp->data();
+	float *pfi1;
+
+	Intrinsic in0 = m_key->intrinsic;
+	Intrinsic in1 = m_frame->intrinsic;
+	double f1 = 1.0/in0.f;
+	Vec9d R = m_frame->rotation;
+	Vec3d t = m_frame->pos;
+
+	for (int i = 0; i < total; i++) {
+	
+		u = i % m_width;
+		v = i / m_width;
+
+		x0[0] = (u-in0.cx)*f1;
+		x0[1] = (v-in0.cy)*f1;
+		x0[2] = 1;
+		x0[3] = pd[i];
+		//px[i] = x0;
+
+		x1[0] = R[0]*x0[0]+R[1]*x0[1]+R[2]*x0[2]+t[0]*x0[3];
+		x1[1] = R[3]*x0[0]+R[4]*x0[1]+R[5]*x0[2]+t[1]*x0[3];
+		x1[2] = R[6]*x0[0]+R[7]*x0[1]+R[8]*x0[2]+t[2]*x0[3];
+		x1[3] = x0[3];
+		x1 /= x1[2];
+
+		m[0] = in1.f*x1[0]+in1.cx;
+		m[1] = in1.f*x1[1]+in1.cy;
+
+		peof[i][0] = m[0]-u;
+		peof[i][1] = m[1]-v;
+
+		pofr[i][0] = pof[i][0]-(m[0]-u);
+		pofr[i][1] = pof[i][1]-(m[1]-v);
+
+		//m[0] += in0.cx;
+		//m[1] += in0.cy;
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1) {
+		
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+
+			pfi1 = pi1 + v * m_width + u;
+			pwi1[i] = SAMPLE_2D(pfi1[0], pfi1[1], pfi1[m_width], pfi1[m_width+1], m[0], m[1]);
+		}
+		else {
+			pwi1[i] = 0;
+		}	
+		
+	}
+}
+
+bool Slam::calc_dr_of5() {
+
+	std::cout << "Slam::calc_dr_of5" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	Vec2f* put = (Vec2f*)m_key->of_residual->data();
+	float* pwo = (float*)m_key->of_weight->data();
+	float* pwe = (float*)m_key->epi_weight->data();
+	float* pd = (float*)m_key->depth->data();
+
+	Intrinsic in = m_key->intrinsic;
+	double f = in.f;
+	double f1 = 1.0 / in.f;
+
+	double up[6], ua[6],ut[2];
+	double ap[3], aa[3], b, x[2], d, u[2];
+	double Ap[9], Bp[3], Aa[9], Ba[3], w;
+	memset(Ap, 0, sizeof(Ap));
+	memset(Aa, 0, sizeof(Aa));	
+	memset(Bp, 0, sizeof(Bp));
+	memset(Ba, 0, sizeof(Ba));
+
+	for (int i = 0; i < total; i++) {
+
+		u[0] = i % m_width - in.cx;
+		u[1] = i / m_width - in.cy;
+
+		x[0] = u[0]*f1;
+		x[1] = u[1]*f1;
+
+		d = pd[i];
+
+		ut[0] = put[i][0];
+		ut[1] = put[i][1];
+		b = ut[0]*ut[0]+ut[1]*ut[1];
+		w = exp(-b*0.25);
+		w *= pwo[i];
+		//w = 1;
+		pwe[i] = w;		
+
+		up[0] = d*f;
+		up[1] = 0; 
+		up[2] = -d*u[0];
+		up[3] = 0;
+		up[4] = d*f; 
+		up[5] = -d*u[1];
+
+		Ap[0] += w*(up[0]*up[0]+up[3]*up[3]);
+		Ap[1] += w*(up[0]*up[1]+up[3]*up[4]);
+		Ap[2] += w*(up[0]*up[2]+up[3]*up[5]);
+		Ap[4] += w*(up[1]*up[1]+up[4]*up[4]);
+		Ap[5] += w*(up[1]*up[2]+up[4]*up[5]);
+		Ap[8] += w*(up[2]*up[2]+up[2]*up[5]);
+
+		Bp[0] += w*(up[0]*ut[0]+up[3]*ut[1]);
+		Bp[1] += w*(up[1]*ut[0]+up[4]*ut[1]);
+		Bp[2] += w*(up[2]*ut[0]+up[5]*ut[1]);
+
+		ua[0] = -u[0]*x[1];
+		ua[1] = f+u[0]*x[0];
+		ua[2] = -u[1];
+		ua[3] = -f-u[1]*x[1];
+		ua[4] = u[1]*x[0];
+		ua[5] = u[0];
+
+		Aa[0] += w*(ua[0]*ua[0]+ua[3]*ua[3]);
+		Aa[1] += w*(ua[0]*ua[1]+ua[3]*ua[4]);
+		Aa[2] += w*(ua[0]*ua[2]+ua[3]*ua[5]);
+		Aa[4] += w*(ua[1]*ua[1]+ua[4]*ua[4]);
+		Aa[5] += w*(ua[1]*ua[2]+ua[4]*ua[5]);
+		Aa[8] += w*(ua[2]*ua[2]+ua[5]*ua[5]);
+
+		Ba[0] += w*(ua[0]*ut[0]+ua[3]*ut[1]);
+		Ba[1] += w*(ua[1]*ut[0]+ua[4]*ut[1]);
+		Ba[2] += w*(ua[2]*ut[0]+ua[5]*ut[1]);
+
+	}
+
+	Ap[3] = Ap[1];
+	Ap[6] = Ap[2];
+	Ap[7] = Ap[5];
+
+	Aa[3] = Aa[1];
+	Aa[6] = Aa[2];
+	Aa[7] = Aa[5];		
+
+	Vec9d iAp = MatrixToolbox::inv_matrix_3x3(Ap);
+	Vec3d dp(
+		iAp[0]*Bp[0]+iAp[1]*Bp[1]+iAp[2]*Bp[2],
+		iAp[3]*Bp[0]+iAp[4]*Bp[1]+iAp[5]*Bp[2],
+		iAp[6]*Bp[0]+iAp[7]*Bp[1]+iAp[8]*Bp[2]
+	);	
+	m_frame->pos += dp;//*0.5;
+
+
+	Vec9d iAa = MatrixToolbox::inv_matrix_3x3(Aa);
+	Vec3d da(
+		iAa[0]*Ba[0]+iAa[1]*Ba[1]+iAa[2]*Ba[2],
+		iAa[3]*Ba[0]+iAa[4]*Ba[1]+iAa[5]*Ba[2],
+		iAa[6]*Ba[0]+iAa[7]*Ba[1]+iAa[8]*Ba[2]
+	);	
+	MatrixToolbox::update_rotation(m_frame->rotation, da);//*0.3
+
+	m_frame->rotation_warp(m_warp);
+
+	return false;
+}
+
+void Slam::update_depth_of5() {
 
 }
 

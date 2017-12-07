@@ -57,6 +57,7 @@ public:
 	Image* dut;	
 	Image* eof;
 	Image* ddepth;
+	Image* of_residual;
 };
 
 

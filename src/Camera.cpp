@@ -28,6 +28,7 @@ Camera::Camera() : radius(20), movement(0) {
 	of_weight = NULL;
 	epi_weight = NULL;
 	optical_flow = NULL;
+	eof = NULL;
 	//m_grad_residual = NULL;
 	dut = NULL;
 	//residual = NULL;
@@ -76,11 +77,17 @@ void Camera::rotation_warp(Image*& out, bool inverse/* = true*/) {
 
 Vec2d Camera::image_epi_point() {
 
-	double z1 = 1.0 / (epi_point[2] + 0.0001);
+	// double z1 = 1.0 / (epi_point[2] + 0.0001);
+	// return Vec2d(
+	// 	intrinsic.f*epi_point[0]*z1+intrinsic.cx,
+	// 	intrinsic.f*epi_point[1]*z1+intrinsic.cy
+	// );
+
+	double z1 = 1.0 / (pos[2] + 0.0001);
 	return Vec2d(
-		intrinsic.f*epi_point[0]*z1+intrinsic.cx,
-		intrinsic.f*epi_point[1]*z1+intrinsic.cy
-	);
+		intrinsic.f*pos[0]*z1+intrinsic.cx,
+		intrinsic.f*pos[1]*z1+intrinsic.cy
+	);	
 
 }
 
