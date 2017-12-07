@@ -30,6 +30,9 @@ texie:
 
 shanghai:
 	./$(TARGET) data/videos/shanghai.mp4
+
+gongyuan:
+	./$(TARGET) data/videos/gongyuan.mp4	
 	
 move_left_8x8:
 	./$(TARGET) data/images/move_left_8x8_001.png data/images/move_left_8x8_002.png
