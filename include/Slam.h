@@ -9,7 +9,7 @@
 #include <vector>
 
 #define MAX_STATIC_CAMERA_COUNT 100
-#define MAX_PIXEL_INFO 1024
+#define MAX_PIXEL_INFO 2048
 
 namespace ww {
 
@@ -115,7 +115,15 @@ private:
 	void prepare_dr_of5();
 	bool calc_dr_of5();		
 	void update_depth_of5();
-	//void unproject_points_lsd5();		
+	//void unproject_points_lsd5();			
+
+	void build_of6(BuildFlag flag);
+	void prepare_du_of6();
+	bool calc_du_of6();	
+	void prepare_dr_of6();
+	bool calc_dr_of6();		
+	void update_depth_of6();	
+
 
 
 

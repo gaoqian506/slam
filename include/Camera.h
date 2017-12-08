@@ -18,6 +18,16 @@ struct Intrinsic {
 	double cy;
 };
 
+struct CanonicalIntrinsic {
+	// Intrinsic() : fx(500), cx(320), cy(240) {
+
+	// }
+	double fx;
+	double fy;
+	double cx;
+	double cy;
+};
+
 class Camera {
 
 public:
@@ -34,9 +44,13 @@ public:
 	Vec3d pos;
 	Vec3d alpha;
 	Vec9d rotation;
+	Vec3d plane_n;
+	double plane_d;
 	double movement;
 	double radius;
 	Intrinsic intrinsic;
+	CanonicalIntrinsic canonical_intrinsic;
+
 	
 	Image* original;
 	Image* gray;

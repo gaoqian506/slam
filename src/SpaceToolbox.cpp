@@ -38,7 +38,16 @@ void SpaceToolbox::init_intrinsic(Intrinsic& intri, double fovy, int width, int 
 	intri.f = height * 0.5 / tan(0.5*theta);
 	intri.cx = width * 0.5;
 	intri.cy = height * 0.5;
+}
 
+void SpaceToolbox::init_canonical_intrinsic(CanonicalIntrinsic& intri, double fovy, int width, int height) {
+
+	double aspect = (double)width / height;
+	double theta = fovy / 180 * M_PI;
+	intri.fy = 0.5 / tan(0.5*theta);
+	intri.fx = intri.fy / aspect;
+	intri.cx = 0.5;
+	intri.cy = 0.5;
 }
 
 Vec9d SpaceToolbox::make_rotation(const double& thex, const double& they) {

@@ -212,7 +212,14 @@ struct Vec3d {
 
 	Vec3d& normalize() {
 	
-		return *this /= sqrt(length2());
+		double n = length();
+		if (n > 0.0000001) {
+			return *this /= n;
+		}
+		else {
+			return *this;	
+		}
+		
 	}
 
 	double val[3];

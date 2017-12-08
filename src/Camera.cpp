@@ -13,6 +13,9 @@ Camera::Camera() : radius(20), movement(0) {
 	rotation[4] = 1;
 	rotation[8] = 1;
 
+	plane_n[2] = -1;
+	plane_d = 0.1;
+
 	original = NULL;
 	gray = NULL;
 	gradient[0] = NULL;

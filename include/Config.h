@@ -59,6 +59,9 @@ public:
 					// w = p(ofr) * dot(iu0, iu1);
 					// a = ur
 					// b = ofr
+		Of6,		// //use canonical intrinsic
+					// estimate scene plane 
+					// w = dot(iu0, iu1);
 	};
 
 	static int max_width;
@@ -91,6 +94,7 @@ public:
 
 	static bool image_switch;
 	static int win_size[2];
+	//static bool use_canonical_intrinsic;
 
 
 };

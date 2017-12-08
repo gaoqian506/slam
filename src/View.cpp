@@ -224,6 +224,17 @@ void View::keyboard(unsigned char key,int x,int y) {
 		//}	
 		
 		break;
+	case '=':
+		Config::field_skip--;
+		if (Config::field_skip < 1) {
+			Config::field_skip = 1;
+		}
+		glutPostRedisplay();		
+		break;		
+	case '-':
+		Config::field_skip++;
+		glutPostRedisplay();		
+		break;				
 	case 'b':	// key for break
 		key = 'b';
 		break;
