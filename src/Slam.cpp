@@ -5270,12 +5270,17 @@ bool Slam::calc_dr_lsd6() {
 	unsigned char* pm = (unsigned char*)m_key->mask->data();
 	Vec3d t = m_frame->pos;
 
-	double w, dg, l[3], x[3], A[100], B[10], a[10];	
+	double w, dg, l[3], x[3], A[1024], B[32], a[32];	
+
+
+	int gc = Config::depth_grid_size_lsd6[0]*Config::depth_grid_size_lsd6[1];
+	int ac = 6+gc;
+	assert(ac < 32);
+
 	memset(A, 0, sizeof(A));
 	memset(B, 0, sizeof(B));
 
-	//if (t.length2() < 0.001) { t[0] = 1; t[1] = 1; }
-	
+
 	for (int i = 0; i < total; i++) {
 
 		if (!pm[i]) { continue; }
@@ -5310,177 +5315,49 @@ bool Slam::calc_dr_lsd6() {
 
 		a[6+gid] = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
 
-
-		A[0]  += w*a[0]*a[0];
-		A[1]  += w*a[0]*a[1];
-		A[2]  += w*a[0]*a[2];
-		A[3]  += w*a[0]*a[3];
-		A[4]  += w*a[0]*a[4];
-		A[5]  += w*a[0]*a[5];
-		A[6]  += w*a[0]*a[6];
-		A[7]  += w*a[0]*a[7];
-		A[8]  += w*a[0]*a[8];
-		A[9]  += w*a[0]*a[9];
-
-		A[10]  += w*a[1]*a[0];
-		A[11]  += w*a[1]*a[1];
-		A[12]  += w*a[1]*a[2];
-		A[13]  += w*a[1]*a[3];
-		A[14]  += w*a[1]*a[4];
-		A[15]  += w*a[1]*a[5];
-		A[16]  += w*a[1]*a[6];
-		A[17]  += w*a[1]*a[7];
-		A[18]  += w*a[1]*a[8];
-		A[19]  += w*a[1]*a[9];
-
-		A[20]  += w*a[2]*a[0];
-		A[21]  += w*a[2]*a[1];
-		A[22]  += w*a[2]*a[2];
-		A[23]  += w*a[2]*a[3];
-		A[24]  += w*a[2]*a[4];
-		A[25]  += w*a[2]*a[5];
-		A[26]  += w*a[2]*a[6];
-		A[27]  += w*a[2]*a[7];
-		A[28]  += w*a[2]*a[8];
-		A[29]  += w*a[2]*a[9];				
-
-		A[30]  += w*a[3]*a[0];
-		A[31]  += w*a[3]*a[1];
-		A[32]  += w*a[3]*a[2];
-		A[33]  += w*a[3]*a[3];
-		A[34]  += w*a[3]*a[4];
-		A[35]  += w*a[3]*a[5];
-		A[36]  += w*a[3]*a[6];
-		A[37]  += w*a[3]*a[7];
-		A[38]  += w*a[3]*a[8];
-		A[39]  += w*a[3]*a[9];
-
-		A[40]  += w*a[4]*a[0];
-		A[41]  += w*a[4]*a[1];
-		A[42]  += w*a[4]*a[2];
-		A[43]  += w*a[4]*a[3];
-		A[44]  += w*a[4]*a[4];
-		A[45]  += w*a[4]*a[5];
-		A[46]  += w*a[4]*a[6];
-		A[47]  += w*a[4]*a[7];
-		A[48]  += w*a[4]*a[8];
-		A[49]  += w*a[4]*a[9];	
-
-
-		A[50]  += w*a[5]*a[0];
-		A[51]  += w*a[5]*a[1];
-		A[52]  += w*a[5]*a[2];
-		A[53]  += w*a[5]*a[3];
-		A[54]  += w*a[5]*a[4];
-		A[55]  += w*a[5]*a[5];
-		A[56]  += w*a[5]*a[6];
-		A[57]  += w*a[5]*a[7];
-		A[58]  += w*a[5]*a[8];
-		A[59]  += w*a[5]*a[9];
-
-		A[60]  += w*a[6]*a[0];
-		A[61]  += w*a[6]*a[1];
-		A[62]  += w*a[6]*a[2];
-		A[63]  += w*a[6]*a[3];
-		A[64]  += w*a[6]*a[4];
-		A[65]  += w*a[6]*a[5];
-		A[66]  += w*a[6]*a[6];
-		A[67]  += w*a[6]*a[7];
-		A[68]  += w*a[6]*a[8];
-		A[69]  += w*a[6]*a[9];
-
-		A[70]  += w*a[7]*a[0];
-		A[71]  += w*a[7]*a[1];
-		A[72]  += w*a[7]*a[2];
-		A[73]  += w*a[7]*a[3];
-		A[74]  += w*a[7]*a[4];
-		A[75]  += w*a[7]*a[5];
-		A[76]  += w*a[7]*a[6];
-		A[77]  += w*a[7]*a[7];
-		A[78]  += w*a[7]*a[8];
-		A[79]  += w*a[7]*a[9];				
-
-		A[80]  += w*a[8]*a[0];
-		A[81]  += w*a[8]*a[1];
-		A[82]  += w*a[8]*a[2];
-		A[83]  += w*a[8]*a[3];
-		A[84]  += w*a[8]*a[4];
-		A[85]  += w*a[8]*a[5];
-		A[86]  += w*a[8]*a[6];
-		A[87]  += w*a[8]*a[7];
-		A[88]  += w*a[8]*a[8];
-		A[89]  += w*a[8]*a[9];
-
-		A[90]  += w*a[9]*a[0];
-		A[91]  += w*a[9]*a[1];
-		A[92]  += w*a[9]*a[2];
-		A[93]  += w*a[9]*a[3];
-		A[94]  += w*a[9]*a[4];
-		A[95]  += w*a[9]*a[5];
-		A[96]  += w*a[9]*a[6];
-		A[97]  += w*a[9]*a[7];
-		A[98]  += w*a[9]*a[8];
-		A[99]  += w*a[9]*a[9];			
-
-		B[0] -= w*a[0]*dg;
-		B[1] -= w*a[1]*dg;
-		B[2] -= w*a[2]*dg;
-		B[3] -= w*a[3]*dg;
-		B[4] -= w*a[4]*dg;
-		B[5] -= w*a[5]*dg;
-		B[6] -= w*a[6]*dg;
-		B[7] -= w*a[7]*dg;
-		B[8] -= w*a[8]*dg;
-		B[9] -= w*a[9]*dg;		
+		for (int row = 0; row < ac; row++) {
+			for (int col = 0; col < ac; col++) {
+				A[row*ac+col] = w*a[row]*a[col];
+			}
+			B[row] += w*a[row]*dg;
+		}
 
 	}
 
-	cv::Mat cvA = cv::Mat(10, 10, CV_64F, A);
-	cvA += cv::Mat::eye(10, 10, CV_64F);
-	cv::Mat cvB = cv::Mat(10, 1, CV_64F, B);
+	cv::Mat cvA = cv::Mat(ac, ac, CV_64F, A);
+	//cvA += cv::Mat::eye(10, 10, CV_64F);
+	cv::Mat cvB = cv::Mat(ac, 1, CV_64F, B);
 
+	for (int i = 0; i < gc; i++) {
+		int k = i+6;
+		A[k*ac+k] += 1;
+		B[k] += m_key->depth_grid[i];
+	}
+
+	cv::Mat cvr;
 
 	if (!Config::use_trace_A_lsd6) {
-
-		cv::Mat cvr = cvA.inv()*cvB;
-		Vec3d dt(cvr.ptr<double>());
-		Vec3d da(cvr.ptr<double>()+3);
-		m_frame->pos += dt;
-		MatrixToolbox::update_rotation(m_frame->rotation, da);//*0.3
-		double mean = 0;
-		for (int i = 0; i < 4; i++) {
-			m_key->depth_grid[i] += cvr.ptr<double>()[6+i];
-			mean += m_key->depth_grid[i]*0.25;
-		}
-		mean -= Config::default_depth_lsd6;
-		for (int i = 0; i < 4; i++) {
-			m_key->depth_grid[i] -= mean;
-		}
-
-		m_frame->rotation_warp(m_warp);
+		cvr = cvA.inv()*cvB;
 	}
 	else {
-
 		double trace = 0;
 		for (int i = 0; i < 6; i++) {
 			trace += A[i*6+i];
 		}
-		cv::Mat cvr = cvB / trace;	
-		Vec3d dt(cvr.ptr<double>());
-		Vec3d da(cvr.ptr<double>()+3);
-		m_frame->pos += dt;
-		MatrixToolbox::update_rotation(m_frame->rotation, da);//*0.3
-		double mean = 0;
-		for (int i = 0; i < 4; i++) {
-			m_key->depth_grid[i] += cvr.ptr<double>()[6+i];
-			mean += m_key->depth_grid[i]*0.25;
-		}
-		mean -= Config::default_depth_lsd6;
-		for (int i = 0; i < 4; i++) {
-			m_key->depth_grid[i] -= mean;
-		}	
-		m_frame->rotation_warp(m_warp);			
+		cvr = cvB / trace;		
 	}
+
+	Vec3d dt(cvr.ptr<double>());
+	Vec3d da(cvr.ptr<double>()+3);
+	m_frame->pos += dt;
+	MatrixToolbox::update_rotation(m_frame->rotation, da);//*0.3
+
+	for (int i = 0; i < gc; i++) {
+		m_key->depth_grid[i] += cvr.ptr<double>()[6+i];
+
+	}
+
+	m_frame->rotation_warp(m_warp);
 
 
 

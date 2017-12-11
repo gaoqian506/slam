@@ -40,7 +40,7 @@ namespace ww {
 	//bool Config::use_canonical_intrinsic = true;
 
 	bool Config::use_trace_A_lsd6 = false;
-	int Config::depth_grid_size_lsd6[2] = { 2, 2 };
+	int Config::depth_grid_size_lsd6[2] = { 3, 3 };
 	double Config::default_depth_lsd6 = 0.1;
 
 	bool Config::smooth_input_image = false;
