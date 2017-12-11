@@ -5,6 +5,7 @@
 
 #include "Image.h"
 #include "Vectors.h"
+#include "Config.h"
 
 namespace ww {
 
@@ -72,6 +73,11 @@ public:
 	Image* eof;
 	Image* ddepth;
 	Image* of_residual;
+
+//Config::depth_grid_size_lsd6[0],
+//		Config::depth_grid_size_lsd6[1]
+//	Config::depth_grid_size_lsd6[1]
+	double* depth_grid;
 };
 
 

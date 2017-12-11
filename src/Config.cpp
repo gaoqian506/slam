@@ -7,9 +7,9 @@ namespace ww {
 	bool Config::manually_content = true;
 	//bool Config::epipolar_mode = true;
 	//Config::Method Config::method = Config::Entropy5;
-	//Config::Method Config::method = Config::Lsd3;
+	Config::Method Config::method = Config::Lsd6;
 	//Config::Method Config::method = Config::Epi2;
-	Config::Method Config::method = Config::Of6;
+	//Config::Method Config::method = Config::Of6;
 	//Config::Method Config::method = Config::Gof1;
 	int Config::of_skip = 5;
 	int Config::field_skip = 1;
@@ -33,9 +33,15 @@ namespace ww {
 
 	double Config::du_smooth_weight_of5 = 0.01;
 	double Config::du_smooth_lamda_of5 = 1;
-	int Config::max_iterations_of5 = 20;
+	int Config::max_iterations_of5 = 50;
 
 	bool Config::image_switch = true;
 	int Config::win_size[2] = { 500, 500 };
 	//bool Config::use_canonical_intrinsic = true;
+
+	bool Config::use_trace_A_lsd6 = false;
+	int Config::depth_grid_size_lsd6[2] = { 2, 2 };
+	double Config::default_depth_lsd6 = 0.1;
+
+	bool Config::smooth_input_image = false;
 }

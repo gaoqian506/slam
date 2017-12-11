@@ -4,6 +4,7 @@
 
 #include "MatrixToolbox.h"
 #include <assert.h>
+#include <stdlib.h>
 
 namespace ww {
 
@@ -35,11 +36,19 @@ Camera::Camera() : radius(20), movement(0) {
 	//m_grad_residual = NULL;
 	dut = NULL;
 	//residual = NULL;
+
+	int grid_count = Config::depth_grid_size_lsd6[0]*
+		Config::depth_grid_size_lsd6[1];
+	//depth_grid = (double*)malloc(grid_count*sizeof(double));
+	depth_grid = (double*)malloc(grid_count*sizeof(double));
+	for (int i = 0; i < grid_count; i++) {
+		depth_grid[i] = Config::default_depth_lsd6;
+	}
 }
 
 Camera::~Camera() {
 
-
+	free(depth_grid);
 }
 
 

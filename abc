@@ -1,5 +1,206 @@
 
 
+bool Slam::calc_dr_lsd6() {
+
+
+	if (!m_key || !m_frame) { return true; }
+
+	int total = m_width * m_height;
+	int u, v, gu, gv, gid;
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pit = (float*)m_key->residual->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+	Vec3d t = m_frame->pos;
+
+	double w, dg, l[3], x[3], A[100], B[10], a[10];	
+	memset(A, 0, sizeof(A));
+	memset(B, 0, sizeof(B));
+
+	//if (t.length2() < 0.001) { t[0] = 1; t[1] = 1; }
+	
+	for (int i = 0; i < total; i++) {
+
+		if (!pm[i]) { continue; }
+
+		u = i % m_width; 
+		v = i / m_width;
+		gu = u*Config::depth_grid_size_lsd6[0]/m_width;
+		gv = v*Config::depth_grid_size_lsd6[1]/m_width;
+		gid = gv*Config::depth_grid_size_lsd6[0]+gu;
+		//d = m_key->depth_grid[gid];
+		//pd[i] = d;	
+
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+		dg = pit[i];
+		w = pw[i];
+		w = 1;
+
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+		x[2] = 1;
+		l[0] = f * piu[i];
+		l[1] = f * piv[i];
+		l[2] = -(u*piu[i]+v*piv[i]);				
+
+		a[0] = pd[i] * l[0];
+		a[1] = pd[i] * l[1];
+		a[2] = pd[i] * l[2];
+		a[3] = x[1]*l[2]-x[2]*l[1];
+		a[4] = x[2]*l[0]-x[0]*l[2];
+		a[5] = x[0]*l[1]-x[1]*l[0];	
+
+		a[6+gid] = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
+
+
+		A[0]  += w*a[0]*a[0];
+		A[1]  += w*a[0]*a[1];
+		A[2]  += w*a[0]*a[2];
+		A[3]  += w*a[0]*a[3];
+		A[4]  += w*a[0]*a[4];
+		A[5]  += w*a[0]*a[5];
+
+		A[6]  += w*a[1]*a[0];
+		A[7]  += w*a[1]*a[1];
+		A[8]  += w*a[1]*a[2];
+		A[9]  += w*a[1]*a[3];
+		A[10] += w*a[1]*a[4];
+		A[11] += w*a[1]*a[5];
+
+		A[12] += w*a[2]*a[0];
+		A[13] += w*a[2]*a[1];
+		A[14] += w*a[2]*a[2];
+		A[15] += w*a[2]*a[3];
+		A[16] += w*a[2]*a[4];
+		A[17] += w*a[2]*a[5];
+
+		A[18] += w*a[3]*a[0];
+		A[19] += w*a[3]*a[1];
+		A[20] += w*a[3]*a[2];
+		A[21] += w*a[3]*a[3];
+		A[22] += w*a[3]*a[4];
+		A[23] += w*a[3]*a[5];
+
+		A[24] += w*a[4]*a[0];
+		A[25] += w*a[4]*a[1];
+		A[26] += w*a[4]*a[2];
+		A[27] += w*a[4]*a[3];
+		A[28] += w*a[4]*a[4];
+		A[29] += w*a[4]*a[5];
+
+		A[30] += w*a[5]*a[0];
+		A[31] += w*a[5]*a[1];
+		A[32] += w*a[5]*a[2];
+		A[33] += w*a[5]*a[3];
+		A[34] += w*a[5]*a[4];
+		A[35] += w*a[5]*a[5];
+
+		B[0] -= w*a[0]*dg;
+		B[1] -= w*a[1]*dg;
+		B[2] -= w*a[2]*dg;
+		B[3] -= w*a[3]*dg;
+		B[4] -= w*a[4]*dg;
+		B[5] -= w*a[5]*dg;
+
+	}
+
+	cv::Mat cvA = cv::Mat(6, 6, CV_64F, A);
+	cv::Mat cvB = cv::Mat(6, 1, CV_64F, B);
+
+	if (!Config::use_trace_A_lsd6) {
+
+		cv::Mat cvr = cvA.inv()*cvB;
+		Vec3d dt(cvr.ptr<double>());
+		Vec3d da(cvr.ptr<double>()+3);
+		m_frame->pos += dt;
+		MatrixToolbox::update_rotation(m_frame->rotation, da);//*0.3
+		m_frame->rotation_warp(m_warp);		
+	}
+	else {
+
+		double trace = 0;
+		for (int i = 0; i < 6; i++) {
+			trace += A[i*6+i];
+		}
+		cv::Mat cvr = cvB / trace;	
+		Vec3d dt(cvr.ptr<double>());
+		Vec3d da(cvr.ptr<double>()+3);
+		m_frame->pos += dt;
+		MatrixToolbox::update_rotation(m_frame->rotation, da);//*0.3
+		m_frame->rotation_warp(m_warp);			
+	}
+
+
+
+
+	// double At[9] = { A[0], A[1], A[2], A[6], A[7], A[8], A[12], A[13], A[14] };
+	// double Bt[3] = { B[0], B[1], B[2] };
+	// cv::Mat cvAt = cv::Mat(3, 3, CV_64F, At);
+	// cv::Mat cvBt = cv::Mat(3, 1, CV_64F, Bt);
+	// cv::Mat cvrt = cvAt.inv()*cvBt;
+	// Vec3d dt(cvrt.ptr<double>());
+
+	// m_frame->pos += dt;
+
+
+	
+	return false;
+
+
+	double trace = 0;
+	for (int i = 0; i < 6; i++) {
+		trace += A[i*6+i];
+	}
+	cv::Mat cvr = cvB / trace;
+
+
+4746.6711918551237,     -4.451300439356487e-15,  -173.18965178057735,  -425.0976625844487, 48614.413572093952, 64.580213755800941, 
+-4.451300439356487e-15, 5194.2944083758439,      -103.63011917315991,   54168.225374157235, 474.47266332019359, 2243.7097629643763, 
+-173.18965178057735,    -103.63011917315991,     337.29845239285754,    1229.7421892231662, -1998.1754922935909, -49.374999149165888, 
+-425.0976625844487,     -54168.225374157235,     1229.7421892231662,    565937.9792325357, -9660.4354134006589, -22962.605218160432, 
+48614.413572093952,     474.47266332019359,      -1998.1754922935909,   -9660.4354134006589, 498381.85183239635, 168.94594422417376, 
+64.580213755800941,     2243.7097629643763,      -49.374999149165888,   -22962.605218160432, 168.94594422417376, 19883.3125
+
+-496.36231724118466,
+5.8283838497652507e-05, 
+30.915615704157844,
+70.058601420055211,
+-5104.4457440927154,
+-8.8749839672317989
+
+	Vec9d R;
+
+	MatrixToolbox::rectify_rotation(R);
+
+	double _m0[2] = { 0.5, 0.5 };
+	double _K[9] = {100, 0, 30, 0, 100, 30, 0, 0, 1};
+	double _dis[5] = { 0.01, 0, 0, 0, 0 };
+
+	cv::Mat m0 = cv::Mat(1, 1, CV_64FC2, _m0);
+	cv::Mat K = cv::Mat(3, 3, CV_64F, _K);
+	cv::Mat dis = cv::Mat(5, 1, CV_64F, _dis);
+	cv::Mat m1;// = cv::Mat(1, 2, CV_64F);
+
+	//void undistortPoints(InputArray src, OutputArray dst, InputArray cameraMatrix, InputArray distCoeffs, InputArray R=noArray(), InputArray P=noArray())¶
+	//void projectPoints(InputArray objectPoints, InputArray rvec, InputArray tvec, InputArray cameraMatrix, InputArray distCoeffs, OutputArray imagePoints, OutputArray jacobian=noArray(), double aspectRatio=0 )¶
+	
+	cv::undistortPoints(m0, m1, K, dis);
+
+	double* pm1 = m1.ptr<double>();
+	double _p[3] = { pm1[0], pm1[1], 1 };
+	double zeros3[3] = { 0, 0, 0 };
+	cv::Mat p = cv::Mat(1, 1, CV_64FC3, _p);
+	cv::Mat rvec = cv::Mat(1, 3, CV_64F, zeros3);
+	cv::Mat tvec = cv::Mat(1, 3, CV_64F, zeros3);
+	cv::Mat m2;
+	cv::projectPoints(p, rvec, tvec, K, dis, m2);
+
+
 
 
 bool Slam::calc_dr_of6() {

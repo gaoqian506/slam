@@ -124,10 +124,9 @@ private:
 	bool calc_dr_of6();		
 	void update_depth_of6();	
 
-
-
-
-
+	void build_lsd6(BuildFlag flag);
+	void prepare_dr_lsd6();
+	bool calc_dr_lsd6();	
 
 
 	VideoSource* m_source;

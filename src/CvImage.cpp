@@ -45,9 +45,17 @@ void CvImage::gray(Image*& out) {
 	CvImage* cv_out = static_cast<CvImage*>(out);
 	cv::Mat gray;
 	cv::cvtColor(m_cv_mat, gray/*cv_out->cv_mat()*/, CV_BGR2GRAY); 
-	cv::Mat grayf;
-	gray.convertTo(grayf, CV_32F, 1.0/255.0);
-	cv::GaussianBlur(grayf, cv_out->m_cv_mat,  cv::Size( 3, 3 ), 0, 0 );
+	
+	
+	if (Config::smooth_input_image) {
+		cv::Mat grayf;
+		gray.convertTo(grayf, CV_32F, 1.0/255.0);
+		cv::GaussianBlur(grayf, cv_out->m_cv_mat,  cv::Size( 3, 3 ), 0, 0 );
+	}
+	else {
+		gray.convertTo(cv_out->m_cv_mat, CV_32F, 1.0/255.0);
+	}
+	
 }
 void CvImage::sobel_x(Image*& out) {
 

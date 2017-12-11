@@ -1,6 +1,9 @@
 
 #include "MatrixToolbox.h"
 #include "opencv2/core/core.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/calib3d/calib3d.hpp"
+
 
 namespace ww {
 
@@ -63,6 +66,7 @@ void MatrixToolbox::update_rotation(Vec9d& R, const Vec3d& eula) {
 	cvR = svd.u*svd.vt;
 }
 void MatrixToolbox::rectify_rotation(Vec9d& R) {
+
 	assert(0);
 }
 

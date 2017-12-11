@@ -62,6 +62,9 @@ public:
 		Of6,		// //use canonical intrinsic
 					// estimate scene plane 
 					// w = dot(iu0, iu1);
+		Lsd6,	 	// E(dt) = (dot(It, dt)-dg)^2
+					// E(dr) = (dot(Ir, dr)-dg)^2
+					// E(d) = (dot(Id, dd)-dg)^2
 	};
 
 	static int max_width;
@@ -95,6 +98,13 @@ public:
 	static bool image_switch;
 	static int win_size[2];
 	//static bool use_canonical_intrinsic;
+
+	static bool use_trace_A_lsd6;
+	static int depth_grid_size_lsd6[2];
+	static double default_depth_lsd6;
+
+
+	static bool smooth_input_image;
 
 
 };
