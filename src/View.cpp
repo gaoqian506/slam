@@ -265,7 +265,8 @@ void View::special(int key,int x,int y) {
 			//ViewContent::BuildKeyframe +
 			//ViewContent::BuildIterate
 		));	
-		glutPostRedisplay();
+		display();
+		//glutPostRedisplay();
 		break;
 	case GLUT_KEY_F3:
 		//m_content->func_manualy(2);

@@ -665,7 +665,7 @@ void Slam::preprocess(Image* image){
 	
 	if (!m_frame) {
 		m_frame = new Camera();
-		SpaceToolbox::init_intrinsic(m_frame->intrinsic, 45, m_width, m_height);
+		SpaceToolbox::init_intrinsic(m_frame->intrinsic, 49, m_width, m_height);
 		SpaceToolbox::init_canonical_intrinsic(
 			m_frame->canonical_intrinsic, 45, m_width, m_height);
 		m_frame->points = new CvImage(m_width, m_height, Image::Float32, 4);
@@ -5268,12 +5268,14 @@ bool Slam::calc_dr_lsd6() {
 	float* pit = (float*)m_key->residual->data();
 	float* pw = (float*)m_key->of_weight->data();
 	unsigned char* pm = (unsigned char*)m_key->mask->data();
-	Vec3d t = m_frame->pos;
+	double* t = m_frame->pos.val;
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
 
-	double w, dg, l[3], x[3], A[1024], B[32], a[32];	
+	double w, dg, l[3], x[3], A[1024], B[32], a[32], iu[2];
 
-
-	int gc = Config::depth_grid_size_lsd6[0]*Config::depth_grid_size_lsd6[1];
+	int gw = Config::depth_grid_size_lsd6[0];
+	int gh = Config::depth_grid_size_lsd6[1];	
+	int gc = gw*gh;
 	int ac = 6+gc;
 	assert(ac < 32);
 
@@ -5287,9 +5289,9 @@ bool Slam::calc_dr_lsd6() {
 
 		u = i % m_width; 
 		v = i / m_width;
-		gu = u*Config::depth_grid_size_lsd6[0]/m_width;
-		gv = v*Config::depth_grid_size_lsd6[1]/m_height;
-		gid = gv*Config::depth_grid_size_lsd6[0]+gu;
+		gu = u*gw/m_width;
+		gv = v*gh/m_height;
+		gid = gv*gw+gu;
 		//d = m_key->depth_grid[gid];
 		//pd[i] = d;	
 
@@ -5297,14 +5299,21 @@ bool Slam::calc_dr_lsd6() {
 		v = i / m_width - m_frame->intrinsic.cy;
 		dg = pit[i];
 		w = pw[i];
-		w = 1;
+		//w = 1;
+
+		iu[0] = piu[i];
+		iu[1] = piv[i];
+		if (Config::use_wiu1_lsd6) {
+			iu[0] += pwiu1[i][0];
+			iu[1] += pwiu1[i][1];
+		}
 
 		x[0] = f1 * u;
 		x[1] = f1 * v;
 		x[2] = 1;
-		l[0] = f * piu[i];
-		l[1] = f * piv[i];
-		l[2] = -(u*piu[i]+v*piv[i]);				
+		l[0] = f * iu[0];
+		l[1] = f * iu[1];
+		l[2] = -(u*iu[0]+v*iu[1]);
 
 		a[0] = pd[i] * l[0];
 		a[1] = pd[i] * l[1];
@@ -5317,22 +5326,37 @@ bool Slam::calc_dr_lsd6() {
 
 		for (int row = 0; row < ac; row++) {
 			for (int col = 0; col < ac; col++) {
-				A[row*ac+col] = w*a[row]*a[col];
+				A[row*ac+col] += w*a[row]*a[col];
 			}
-			B[row] += w*a[row]*dg;
+			B[row] -= w*a[row]*dg;
 		}
-
 	}
 
-	cv::Mat cvA = cv::Mat(ac, ac, CV_64F, A);
-	//cvA += cv::Mat::eye(10, 10, CV_64F);
-	cv::Mat cvB = cv::Mat(ac, 1, CV_64F, B);
+
+
+	int gif[9] = { -gw-1, -gw, -gw+1, -1, 0, 1, gw-1, gw, gw+1 };
+	int grf[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+	int gcf[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+
+	int row, col, r2, c2, ii;
 
 	for (int i = 0; i < gc; i++) {
-		int k = i+6;
-		A[k*ac+k] += 1;
-		B[k] += m_key->depth_grid[i];
+		row = i / gw;
+		col = i % gw;
+		for (int k = 0; k < 9; k++) {
+			r2 = row + grf[k];
+			c2 = row + gcf[k];
+			if (r2>=0 && r2<gh && c2>=0 && c2<gw) {
+				ii = i+6;
+				A[ii*ac+ii] += f*2;
+				B[ii] -= f*(m_key->depth_grid[i]-m_key->depth_grid[i+gif[k]]);
+			}
+		}
 	}
+
+
+	cv::Mat cvA = cv::Mat(ac, ac, CV_64F, A);
+	cv::Mat cvB = cv::Mat(ac, 1, CV_64F, B);
 
 	cv::Mat cvr;
 
@@ -5341,8 +5365,8 @@ bool Slam::calc_dr_lsd6() {
 	}
 	else {
 		double trace = 0;
-		for (int i = 0; i < 6; i++) {
-			trace += A[i*6+i];
+		for (int i = 0; i < ac; i++) {
+			trace += A[i*ac+i];
 		}
 		cvr = cvB / trace;		
 	}
@@ -5359,20 +5383,6 @@ bool Slam::calc_dr_lsd6() {
 
 	m_frame->rotation_warp(m_warp);
 
-
-
-
-	// double At[9] = { A[0], A[1], A[2], A[6], A[7], A[8], A[12], A[13], A[14] };
-	// double Bt[3] = { B[0], B[1], B[2] };
-	// cv::Mat cvAt = cv::Mat(3, 3, CV_64F, At);
-	// cv::Mat cvBt = cv::Mat(3, 1, CV_64F, Bt);
-	// cv::Mat cvrt = cvAt.inv()*cvBt;
-	// Vec3d dt(cvrt.ptr<double>());
-
-	// m_frame->pos += dt;
-
-
-	
 	return false;
 
 }

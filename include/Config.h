@@ -102,6 +102,7 @@ public:
 	static bool use_trace_A_lsd6;
 	static int depth_grid_size_lsd6[2];
 	static double default_depth_lsd6;
+	static bool use_wiu1_lsd6;
 
 
 	static bool smooth_input_image;

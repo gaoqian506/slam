@@ -1,5 +1,20 @@
 
 
+
+
+
+
+	// double At[9] = { A[0], A[1], A[2], A[6], A[7], A[8], A[12], A[13], A[14] };
+	// double Bt[3] = { B[0], B[1], B[2] };
+	// cv::Mat cvAt = cv::Mat(3, 3, CV_64F, At);
+	// cv::Mat cvBt = cv::Mat(3, 1, CV_64F, Bt);
+	// cv::Mat cvrt = cvAt.inv()*cvBt;
+	// Vec3d dt(cvrt.ptr<double>());
+
+	// m_frame->pos += dt;
+
+	//cvA += cv::Mat::eye(10, 10, CV_64F);
+
 bool Slam::calc_dr_lsd6() {
 
 
