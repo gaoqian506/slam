@@ -37,13 +37,14 @@ Camera::Camera() : radius(20), movement(0) {
 	dut = NULL;
 	//residual = NULL;
 
-	int grid_count = Config::depth_grid_size_lsd6[0]*
+	int gc = Config::depth_grid_size_lsd6[0]*
 		Config::depth_grid_size_lsd6[1];
 	//depth_grid = (double*)malloc(grid_count*sizeof(double));
-	depth_grid = (double*)malloc(grid_count*sizeof(double));
-	for (int i = 0; i < grid_count; i++) {
-		depth_grid[i] = Config::default_depth_lsd6;
-	}
+	depth_grid = (double*)malloc(gc*sizeof(double));
+	memset(depth_grid, 0, gc*sizeof(double));
+	//for (int i = 0; i < grid_count; i++) {
+	//	depth_grid[i] = Config::default_depth_lsd6;
+	//}
 }
 
 Camera::~Camera() {

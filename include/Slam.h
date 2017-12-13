@@ -126,7 +126,15 @@ private:
 
 	void build_lsd6(BuildFlag flag);
 	void prepare_dr_lsd6();
-	bool calc_dr_lsd6();	
+	bool calc_dr_lsd6();
+	void transfer_depth_lsd6();
+
+	void build_of7(BuildFlag flag);
+	void prepare_du_of7();
+	bool calc_du_of7();	
+	void prepare_dr_of7();
+	bool calc_dr_of7();
+	//void update_depth_of6();
 
 
 	VideoSource* m_source;
@@ -157,6 +165,7 @@ private:
 	int m_width;
 	int m_height;
 	std::string m_image_name;
+	double m_interval;
 
 };
 

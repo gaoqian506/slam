@@ -46,6 +46,7 @@ public:
 	virtual void add(Image* right);
 	virtual void warp(Vec9d H, Image*& out);
 	virtual void random(double low, double high);
+	virtual int count_nozero();
 
 private:
 

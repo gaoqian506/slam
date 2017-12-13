@@ -329,7 +329,8 @@ void View::special(int key,int x,int y) {
 			SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
 		}
 		else {
-			m_trans_2d[0] *= 0.8;
+			//m_trans_2d[0] *= 0.8;
+			m_key_index ? m_key_index-- : m_key_index;
 		}
 		glutPostRedisplay();
 		break; 
@@ -338,7 +339,9 @@ void View::special(int key,int x,int y) {
 			SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
 		}
 		else {
-			m_trans_2d[0] *= 1.25;
+			
+			m_key_index++;
+			//m_trans_2d[0] *= 1.25;
 		}
 		glutPostRedisplay();
 		break;	}
@@ -443,7 +446,7 @@ void View::draw_content() {
 	glColor3d(0.87,0.623,3.222);
 
 	for (int i = 0; i < camera_count; i++) {
-		draw_camera_instance(cameras[i]);
+		draw_camera_instance(cameras[i], true);
 	}
 
 	Camera* current = m_content->get_current_frame();

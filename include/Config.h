@@ -65,6 +65,7 @@ public:
 		Lsd6,	 	// E(dt) = (dot(It, dt)-dg)^2
 					// E(dr) = (dot(Ir, dr)-dg)^2
 					// E(d) = (dot(Id, dd)-dg)^2
+		Of7,		// E(Rt) = (UrRt + Ut)^2
 	};
 
 	static int max_width;
@@ -81,7 +82,7 @@ public:
 	static bool use_i1_constrain_of3;
 	static double epi_sigma2_of3;
 	static int max_iterate_times;
-	static int build_steps;
+	
 	static bool only_calc_epi_dr;
 	static bool use_of_smooth_of4;
 	static double min_depth_weight;
@@ -103,9 +104,15 @@ public:
 	static int depth_grid_size_lsd6[2];
 	static double default_depth_lsd6;
 	static bool use_wiu1_lsd6;
+	static double iu0_lenth2_thresh_lsd6;
 
 
 	static bool smooth_input_image;
+	static int build_steps;
+	static int build_iterations;
+	static double mask_radio_thresh;
+	static bool use_i1_constraint;
+	static double default_depth;
 
 
 };

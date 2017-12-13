@@ -221,6 +221,10 @@ void CvImage::random(double low, double high) {
 	cv::randu(m_cv_mat, low, high);
 }
 
+int CvImage::count_nozero() {
+	
+	return cv::countNonZero(m_cv_mat);
+}
 //float CvImage::sample(const float& a, const float& b) {
 
 	//assert(m_cv_mat.type() == CV_32F);
