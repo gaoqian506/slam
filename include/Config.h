@@ -66,6 +66,9 @@ public:
 					// E(dr) = (dot(Ir, dr)-dg)^2
 					// E(d) = (dot(Id, dd)-dg)^2
 		Of7,		// E(Rt) = (UrRt + Ut)^2
+		Lsd7,	 	// E(dr) = (dot(Ir, dr)-dg)^2
+					// E(ds) = (dot(Is, ds)-dg)^2 + (ds-dsi)^2
+
 	};
 
 	static int max_width;
@@ -113,6 +116,7 @@ public:
 	static double mask_radio_thresh;
 	static bool use_i1_constraint;
 	static double default_depth;
+	static double default_ddepth;
 
 
 };

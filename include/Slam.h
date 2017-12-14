@@ -136,6 +136,13 @@ private:
 	bool calc_dr_of7();
 	//void update_depth_of6();
 
+	void build_lsd7(BuildFlag flag);
+	void prepare_dr_lsd7();
+	bool calc_dr_lsd7();
+	void calc_dd_lsd7();
+	void update_depth_lsd7();
+	void transfer_depth_lsd7();
+
 
 	VideoSource* m_source;
 	bool m_working;

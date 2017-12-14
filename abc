@@ -1,5 +1,149 @@
 
+	//m_key->depth->add(m_key->ddepth);
 
+
+bool Slam::calc_dr_of7() {
+
+
+	std::cout << "Slam::calc_dr_of7" << std::endl;
+
+	if (!m_key || !m_frame) { return true; }
+	int total = m_width * m_height;
+	Vec2f* put = (Vec2f*)m_key->of_residual->data();
+	float* pwo = (float*)m_key->of_weight->data();
+	float* pwe = (float*)m_key->epi_weight->data();
+	float* pd = (float*)m_key->depth->data();
+
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+
+	Intrinsic in = m_key->intrinsic;
+	double f = in.f;
+	double f1 = 1.0 / in.f;
+	//Vec3d t = m_frame->pos;
+	//t.normalize();
+
+	double ut[2], b, w, d, u[2], x[2], w2;
+	double A[36], B[6], a[12], a2[6];	
+	memset(A, 0, sizeof(A));
+	memset(B, 0, sizeof(B));
+
+	for (int i = 0; i < total; i++) {
+
+		u[0] = i % m_width - in.cx;
+		u[1] = i / m_width - in.cy;
+
+		x[0] = u[0]*f1;
+		x[1] = u[1]*f1;
+
+		d = pd[i];
+
+		ut[0] = put[i][0];
+		ut[1] = put[i][1];
+
+		w = 1;//pwo[i];
+		pwe[i] = w;
+
+
+		a[0] = d*f;
+		a[1] = 0; 
+		a[2] = -d*u[0];
+		a[6] = 0;
+		a[7] = d*f; 
+		a[8] = -d*u[1];		
+
+		a[3] = -u[0]*x[1];
+		a[4] = f+u[0]*x[0];
+		a[5] = -u[1];		
+		a[9] = -f-u[1]*x[1];
+		a[10] = u[1]*x[0];
+		a[11] = u[0];
+
+		a2[0] = ut[0]*a[0]-ut[1]*a[6];
+		a2[1] = ut[0]*a[1]-ut[1]*a[7];
+		a2[2] = ut[0]*a[2]-ut[1]*a[8];
+		a2[3] = ut[0]*a[3]-ut[1]*a[9];
+		a2[4] = ut[0]*a[4]-ut[1]*a[10];
+		a2[5] = ut[0]*a[5]-ut[1]*a[11];
+
+
+		A[0]  += w*(a2[0]*a2[0]);
+		A[1]  += w*(a2[0]*a2[1]);
+		A[2]  += w*(a2[0]*a2[2]);
+		A[3]  += w*(a2[0]*a2[3]);
+		A[4]  += w*(a2[0]*a2[4]);
+		A[5]  += w*(a2[0]*a2[5]);
+
+		A[6]  += w*(a2[1]*a2[0]);
+		A[7]  += w*(a2[1]*a2[1]);
+		A[8]  += w*(a2[1]*a2[2]);
+		A[9]  += w*(a2[1]*a2[3]);
+		A[10] += w*(a2[1]*a2[4]);
+		A[11] += w*(a2[1]*a2[5]);
+
+		A[12] += w*(a2[2]*a2[0]);
+		A[13] += w*(a2[2]*a2[1]);
+		A[14] += w*(a2[2]*a2[2]);
+		A[15] += w*(a2[2]*a2[3]);
+		A[16] += w*(a2[2]*a2[4]);
+		A[17] += w*(a2[2]*a2[5]);
+
+		A[18] += w*(a2[3]*a2[0]);
+		A[19] += w*(a2[3]*a2[1]);
+		A[20] += w*(a2[3]*a2[2]);
+		A[21] += w*(a2[3]*a2[3]);
+		A[22] += w*(a2[3]*a2[4]);
+		A[23] += w*(a2[3]*a2[5]);
+
+		A[24] += w*(a2[4]*a2[0]);
+		A[25] += w*(a2[4]*a2[1]);
+		A[26] += w*(a2[4]*a2[2]);
+		A[27] += w*(a2[4]*a2[3]);
+		A[28] += w*(a2[4]*a2[4]);
+		A[29] += w*(a2[4]*a2[5]);
+
+		A[30] += w*(a2[5]*a2[0]);
+		A[31] += w*(a2[5]*a2[1]);
+		A[32] += w*(a2[5]*a2[2]);
+		A[33] += w*(a2[5]*a2[3]);
+		A[34] += w*(a2[5]*a2[4]);
+		A[35] += w*(a2[5]*a2[5]);
+
+		B[0] += w*(a[0]*ut[0]+a[6]*ut[1]);
+		B[1] += w*(a[1]*ut[0]+a[7]*ut[1]);
+		B[2] += w*(a[2]*ut[0]+a[8]*ut[1]);
+		B[3] += w*(a[3]*ut[0]+a[9]*ut[1]);
+		B[4] += w*(a[4]*ut[0]+a[10]*ut[1]);
+		B[5] += w*(a[5]*ut[0]+a[11]*ut[1]);
+
+	
+
+	}
+
+	// A[0]  += f;
+	// A[7]  += f;
+	// A[14] += f;
+	// A[21] += f;
+	// A[28] += f;
+	// A[35] += f;		
+
+	cv::Mat cvA = cv::Mat(6, 6, CV_64F, A);
+	//cvA += cv::Mat::eye(6, 6, CV_64F);
+	cv::Mat cvB = cv::Mat(6, 1, CV_64F, B);
+	cv::Mat cvr = cvA.inv()*cvB;
+
+	Vec3d dt(cvr.ptr<double>());
+	Vec3d da(cvr.ptr<double>()+3);
+	m_frame->pos += dt;
+	MatrixToolbox::update_rotation(m_frame->rotation, da);//*0.3
+
+
+	m_frame->rotation_warp(m_warp);
+
+	return false;
+
+
+}
 
 
 bool Slam::calc_dr_of7() {
