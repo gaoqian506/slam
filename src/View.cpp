@@ -556,13 +556,14 @@ void View::draw_field(Image* field, Image* weight/* = NULL*/) {
 		int v = (int)m_pixel_pos[1];
 		mv = ((Vec2f*)field->data())[v*w+u];
 
-		glLineWidth(2);
+		glLineWidth(4);
 		glColor3d(0, 0, 1);
 		glBegin(GL_LINES);
 		glVertex2d(u+m[0], v+m[1]);
 		glVertex2d(u+m[0]+mv[0], v+m[1]+mv[1]);
 		glEnd();
 
+		glLineWidth(2);
 		Camera* camera = m_content->get_current_frame();
 		if (camera) {
 			Vec2d ep = camera->image_epi_point();

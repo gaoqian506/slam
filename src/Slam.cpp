@@ -164,12 +164,12 @@ Image* Slam::get_debug_image(int iid, int kid, Image** weight/* = 0*/) {
 	}	
 	else if (iid == 7 && key) {
 		if (Config::image_switch) {
-			which1 = key->depth;
-			m_image_name = "depth(8)";
+			which1 = key->ddepth;
+			m_image_name = "ddepth(8)";			
 		}
 		else {
-			which1 = key->ddepth;
-			m_image_name = "ddepth(8)";
+			which1 = key->depth;
+			m_image_name = "depth(8)";
 		}		
 	}	
 	else if (iid == 8 && key) {
@@ -5662,7 +5662,7 @@ bool Slam::calc_du_of7() {
 	float* pw = (float*)m_key->of_weight->data();
 	unsigned char* pm = (unsigned char*)m_key->mask->data();
 
-	int u, v, u2, v2;
+	int u, v, u2, v2, ik;
 	float w, iu0[2], iu1[2];//, d;
 	double it, iuu[2];
 	double lamda = Config::du_smooth_lamda_of3;
@@ -5690,27 +5690,28 @@ bool Slam::calc_du_of7() {
 		for (int k = 0; k < 9; k++) {
 			u2 = u + offx[k];
 			v2 = v + offy[k];
+			ik = i + offid[k];
 			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
 
-				iu0[0] = piu0[i+offid[k]];
-				iu0[1] = piv0[i+offid[k]];
-				it = pwit[i+offid[k]];
+				iu0[0] = piu0[ik];
+				iu0[1] = piv0[ik];
+				it = pwit[ik];
 				a += iu0[0]*iu0[0]+iu0[1]*iu0[1];
 				b[0] -= it*iu0[0];
 				b[1] -= it*iu0[1];
 
 				if (Config::use_i1_constraint) {
-					iu1[0] = pwiu1[i+offid[k]][0];
-					iu1[1] = pwiu1[i+offid[k]][1];
+					iu1[0] = pwiu1[ik][0];
+					iu1[1] = pwiu1[ik][1];
 
 					a += iu1[0]*iu1[0]+iu1[1]*iu1[1];
 					b[0] -= it*iu1[0];
 					b[1] -= it*iu1[1];			
 				}				
 
-				iuu[0] = put[i+offid[k]][0]-put[i][0];
-				iuu[1] = put[i+offid[k]][1]-put[i][1];
-				w = pw[i+offid[k]] + Config::stable_factor_of3;
+				iuu[0] = put[ik][0]-put[i][0];
+				iuu[1] = put[ik][1]-put[i][1];
+				w = pw[ik] + Config::stable_factor_of3;
 				w *= Config::du_smooth_lamda_of3;
 				a += w;
 				b[0] += w*iuu[0];
@@ -5735,7 +5736,7 @@ void Slam::prepare_dr_of7() {
 	
 	int total = m_width * m_height;
 	int u, v;
-	double m[2], wut[2], ud[2], udl;
+	double m[2], wut[2], ud[2], udl, dlamda;
 	Vec4f x0, x1;
 
 	Vec2f* pof = (Vec2f*)m_key->optical_flow->data();
@@ -5764,7 +5765,7 @@ void Slam::prepare_dr_of7() {
 		x0[0] = u*f1;
 		x0[1] = v*f1;
 		x0[2] = 1;		
-		x0[3] = pd[i]+pdd[i];
+		x0[3] = pd[i]*pdd[i];
 		px[i] = x0;
 
 
@@ -5783,14 +5784,18 @@ void Slam::prepare_dr_of7() {
 		wut[0] = pof[i][0]-(m[0]-u);
 		wut[1] = pof[i][1]-(m[1]-v);
 
-		pofr[i][0] = wut[0];
-		pofr[i][1] = wut[1];
-
-		ud[0] = in0.f*t[0]-u*t[2];
-		ud[1] = in0.f*t[1]-v*t[2];
+		ud[0] = pd[i]*(in0.f*t[0]-u*t[2]);
+		ud[1] = pd[i]*(in0.f*t[1]-v*t[2]);
 
 		udl = ud[0]*ud[0]+ud[1]*ud[1];
-		pdd[i] += (wut[0]*ud[0]+wut[1]*ud[1])/(udl+0.1);
+		dlamda = (wut[0]*ud[0]+wut[1]*ud[1])/(udl+0.1);
+		pdd[i] += dlamda;
+		 
+		wut[0] -= dlamda*ud[0];
+		wut[1] -= dlamda*ud[1];
+
+		pofr[i][0] = wut[0];
+		pofr[i][1] = wut[1];		
 
 		m[0] += in1.cx;
 		m[1] += in1.cy;
@@ -5849,12 +5854,12 @@ bool Slam::calc_dr_of7() {
 		x[0] = u[0]*f1;
 		x[1] = u[1]*f1;
 
-		d = pd[i]+pdd[i];
+		d = pd[i]*pdd[i];
 
 		ut[0] = put[i][0];
 		ut[1] = put[i][1];
 
-		w = 1;//pwo[i];
+		w = pwo[i];
 		pwe[i] = w;
 
 
@@ -5895,39 +5900,39 @@ bool Slam::calc_dr_of7() {
 		A[4]  += w*(a[0]*a[4]+a[6]*a[10]);
 		A[5]  += w*(a[0]*a[5]+a[6]*a[11]);
 
-		A[6]  += w*(a[1]*a[0]+a[7]*a[6]);
+		//A[6]  += w*(a[1]*a[0]+a[7]*a[6]);
 		A[7]  += w*(a[1]*a[1]+a[7]*a[7]);
 		A[8]  += w*(a[1]*a[2]+a[7]*a[8]);
 		A[9]  += w*(a[1]*a[3]+a[7]*a[9]);
 		A[10] += w*(a[1]*a[4]+a[7]*a[10]);
 		A[11] += w*(a[1]*a[5]+a[7]*a[11]);	
 
-		A[12] += w*(a[2]*a[0]+a[8]*a[6]);
-		A[13] += w*(a[2]*a[1]+a[8]*a[7]);
+		//A[12] += w*(a[2]*a[0]+a[8]*a[6]);
+		//A[13] += w*(a[2]*a[1]+a[8]*a[7]);
 		A[14] += w*(a[2]*a[2]+a[8]*a[8]);
 		A[15] += w*(a[2]*a[3]+a[8]*a[9]);
 		A[16] += w*(a[2]*a[4]+a[8]*a[10]);
 		A[17] += w*(a[2]*a[5]+a[8]*a[11]);	
 
-		A[18] += w*(a[3]*a[0]+a[9]*a[6]);
-		A[19] += w*(a[3]*a[1]+a[9]*a[7]);
-		A[20] += w*(a[3]*a[2]+a[9]*a[8]);
+		//A[18] += w*(a[3]*a[0]+a[9]*a[6]);
+		//A[19] += w*(a[3]*a[1]+a[9]*a[7]);
+		//A[20] += w*(a[3]*a[2]+a[9]*a[8]);
 		A[21] += w*(a[3]*a[3]+a[9]*a[9]);
 		A[22] += w*(a[3]*a[4]+a[9]*a[10]);
 		A[23] += w*(a[3]*a[5]+a[9]*a[11]);
 
-		A[24] += w*(a[4]*a[0]+a[10]*a[6]);
-		A[25] += w*(a[4]*a[1]+a[10]*a[7]);
-		A[26] += w*(a[4]*a[2]+a[10]*a[8]);
-		A[27] += w*(a[4]*a[3]+a[10]*a[9]);
+		//A[24] += w*(a[4]*a[0]+a[10]*a[6]);
+		//A[25] += w*(a[4]*a[1]+a[10]*a[7]);
+		//A[26] += w*(a[4]*a[2]+a[10]*a[8]);
+		//A[27] += w*(a[4]*a[3]+a[10]*a[9]);
 		A[28] += w*(a[4]*a[4]+a[10]*a[10]);
 		A[29] += w*(a[4]*a[5]+a[10]*a[11]);
 
-		A[30] += w*(a[5]*a[0]+a[11]*a[6]);
-		A[31] += w*(a[5]*a[1]+a[11]*a[7]);
-		A[32] += w*(a[5]*a[2]+a[11]*a[8]);
-		A[33] += w*(a[5]*a[3]+a[11]*a[9]);
-		A[34] += w*(a[5]*a[4]+a[11]*a[10]);
+		//A[30] += w*(a[5]*a[0]+a[11]*a[6]);
+		//A[31] += w*(a[5]*a[1]+a[11]*a[7]);
+		//A[32] += w*(a[5]*a[2]+a[11]*a[8]);
+		//A[33] += w*(a[5]*a[3]+a[11]*a[9]);
+		//A[34] += w*(a[5]*a[4]+a[11]*a[10]);
 		A[35] += w*(a[5]*a[5]+a[11]*a[11]);	
 
 		B[0] += w*(a[0]*ut[0]+a[6]*ut[1]);
@@ -5940,6 +5945,27 @@ bool Slam::calc_dr_of7() {
 	
 
 	}
+
+
+	A[6] = A[1];
+
+	A[12] = A[2];
+	A[13] = A[8];
+
+	A[18] = A[3];
+	A[19] = A[9];
+	A[20] = A[15];
+
+	A[24] = A[4];
+	A[25] = A[10];
+	A[26] = A[16];
+	A[27] = A[22];
+
+	A[30] = A[5];
+	A[31] = A[11];
+	A[32] = A[17];
+	A[33] = A[23];
+	A[34] = A[29];
 
 	// A[0]  += f;
 	// A[7]  += f;
@@ -5985,6 +6011,7 @@ void Slam::build_lsd7(BuildFlag flag) {
 		while(flag & BuildOpticalFlow) {
 			prepare_dr_lsd7();
 			ok = calc_dr_lsd7();
+			prepare_dr_lsd7();
 			calc_dd_lsd7();
 			//->add(m_dut);
 			if (!(flag & BuildIterate) || ok || 
@@ -6177,9 +6204,12 @@ bool Slam::calc_dr_lsd7() {
 		a[4] = x[2]*l[0]-x[0]*l[2];
 		a[5] = x[0]*l[1]-x[1]*l[0];	
 
-		a[3] = 0;
-		a[4] = 0;
-		a[5] = 0;			
+		// a[0] = 0;
+		// a[1] = 0;
+		// a[2] = 0;
+		// a[3] = 0;
+		// a[4] = 0;
+		// a[5] = 0;			
 
 
 		A[0]  += w*(a[0]*a[0]);
@@ -6242,7 +6272,7 @@ bool Slam::calc_dr_lsd7() {
 	Vec3d dt(cvr.ptr<double>());
 	Vec3d da(cvr.ptr<double>()+3);
 	m_frame->pos += dt;
-	m_frame->pos = Vec3d(-1, 0, 0);
+	//m_frame->pos = Vec3d(-0.1, 0, 0);
 	MatrixToolbox::update_rotation(m_frame->rotation, da);//*0.3
 
 	m_frame->rotation_warp(m_warp);
@@ -6267,7 +6297,7 @@ void Slam::calc_dd_lsd7() {
 	float* pw = (float*)m_key->of_weight->data();
 	unsigned char* pm = (unsigned char*)m_key->mask->data();
 
-	int u, v, u2, v2;
+	int u, v, u2, v2, ik;
 
 	int offid[9] = { 
 		-m_width-1, -m_width, -m_width+1,
@@ -6280,8 +6310,10 @@ void Slam::calc_dd_lsd7() {
 	Intrinsic in = m_key->intrinsic;
 	double f1 = 1.0/in.f;
 	const double* t = m_frame->pos.val;
+	double tl = m_frame->pos.length2();
 
-	double a, b, c, ddk, x[2], it, w, iu[2];
+
+	double a, b, c, ddk, x[2], it, w, iu[2], d, dd;
 
 	for (int i = 0; i < total; i++) {
 
@@ -6289,40 +6321,35 @@ void Slam::calc_dd_lsd7() {
 		v = i / m_width;
 		a = 0;
 		b = 0;
+		d = pd[i];
+		dd = pdd[i];
+
+		if (pm[i]) {
+			x[0] = (u-in.cx)*f1;
+			x[1] = (v-in.cy)*f1;
+			iu[0] = piu0[i];
+			iu[1] = piv0[i];
+			it = pwit[i];
+			c = pd[i]*(iu[0]*t[0]+iu[1]*t[1]-
+			(iu[0]*x[0]+iu[1]*x[1])*t[2]);
+			a += c*c;
+			b -= c*it*f1;
+		}
 		for (int k = 0; k < 9; k++) {
+		//for (int k = 4; k < 6; k++) {
 			u2 = u + offx[k];
 			v2 = v + offy[k];
-			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[i+offid[k]]) {
+			ik = i + offid[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[ik]) {
 
-				x[0] = (u2-in.cx)*f1;
-				x[1] = (v2-in.cy)*f1;
-				iu[0] = piu0[i+offid[k]];
-				iu[1] = piv0[i+offid[k]];
-				it = pwit[i+offid[k]];
+				w = pw[ik]*tl+0.01;
+				a += w*d*d;
+				b += w*(pdd[ik]*pd[ik]*d-dd*d*d);
 
-				c = pd[i+offid[k]]*(iu[0]*t[0]+iu[1]*t[1]-
-					(iu[0]*x[0]+iu[1]*x[1])*t[2]);
-				a += c*c;
-				b += c*it*f1;
-
-				// if (Config::use_i1_constrain_lsd5) {
-				// 	iu[0] = pwiu1[i+offid[k]][0];
-				// 	iu[1] = pwiu1[i+offid[k]][1];
-
-				// 	c = pd[i]*(iu[0]*t[0]+iu[1]*t[1]-
-				// 		(iu[0]*x[0]+iu[1]*x[1])*t[2]);
-				// 	a += c*c;
-				// 	b += c*it*f1;
-				// }
-
-				// ddk = pdd[i+offid[k]]-pdd[i];
-				// w = 1;//pw[i+offid[k]];1;//
-				// a += w;
-				// b -= w*ddk;
 			}
 		}
 
-		pdd[i] -= (b / (a+0.01));
+		pdd[i] += b/(a+0.0001);
 
 	}
 

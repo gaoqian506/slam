@@ -1,4 +1,33 @@
 
+	
+
+
+				x[0] = (u2-in.cx)*f1;
+				x[1] = (v2-in.cy)*f1;
+				iu[0] = piu0[ik];
+				iu[1] = piv0[ik];
+				it = pwit[ik];
+
+				c = pd[ik]*(iu[0]*t[0]+iu[1]*t[1]-
+					(iu[0]*x[0]+iu[1]*x[1])*t[2]);
+				a += c*c;
+				b -= c*it*f1;
+
+				// if (Config::use_i1_constrain_lsd5) {
+				// 	iu[0] = pwiu1[i+offid[k]][0];
+				// 	iu[1] = pwiu1[i+offid[k]][1];
+
+				// 	c = pd[i]*(iu[0]*t[0]+iu[1]*t[1]-
+				// 		(iu[0]*x[0]+iu[1]*x[1])*t[2]);
+				// 	a += c*c;
+				// 	b += c*it*f1;
+				// }
+
+				 // ddk = pdd[ik]-pdd[i];
+				 // w = 0.01;//pw[i+offid[k]];1;//
+				 // a += w;
+				 // b += w*ddk;
+
 	//m_key->depth->add(m_key->ddepth);
 
 

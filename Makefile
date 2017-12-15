@@ -34,10 +34,10 @@ shanghai:
 gongyuan:
 	./$(TARGET) data/videos/gongyuan.mp4	
 	
-move_left_8x8:
+m1_left_8x8:
 	./$(TARGET) data/images/move_left_8x8_001.png data/images/move_left_8x8_002.png
 
-move_left_64x64:
+m2_left_64x64:
 	./$(TARGET) data/images/move_left_64x64_001.png data/images/move_left_64x64_002.png
 	
 tsukuba:
