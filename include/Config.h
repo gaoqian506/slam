@@ -1,6 +1,8 @@
 #ifndef __WW_CONFIG_HEADER__
 #define __WW_CONFIG_HEADER__
 
+#include "Vectors.h"
+
 namespace ww {
 
 
@@ -117,6 +119,7 @@ public:
 	static bool use_i1_constraint;
 	static double default_depth;
 	static double default_ddepth;
+	static Vec3d default_camera_pos;
 
 
 };

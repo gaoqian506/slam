@@ -10,6 +10,7 @@ namespace ww {
 
 Camera::Camera() : radius(20), movement(0) {
 
+	pos = Config::default_camera_pos;
 	rotation[0] = 1;
 	rotation[4] = 1;
 	rotation[8] = 1;

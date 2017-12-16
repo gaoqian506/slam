@@ -173,6 +173,7 @@ private:
 	int m_height;
 	std::string m_image_name;
 	double m_interval;
+	double m_res[2];
 
 };
 

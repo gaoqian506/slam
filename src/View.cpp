@@ -214,7 +214,7 @@ void View::keyboard(unsigned char key,int x,int y) {
 		m_content->build((ViewContent::BuildFlag)(
 			ViewContent::BuildReadFrame + 
 			ViewContent::BuildOpticalFlow +
-			ViewContent::BuildEpipolar +
+			//ViewContent::BuildEpipolar +
 			ViewContent::BuildDepth +
 			ViewContent::BuildKeyframe +
 			ViewContent::BuildIterate +
@@ -499,6 +499,23 @@ void View::draw_image(Image* image) {
 	// glVertex2d(+w/2, +h/2);
 	// glVertex2d(+w/2, -h/2);
 	// glEnd();
+	int u = (int)m_pixel_pos[0];
+	int v = (int)m_pixel_pos[1];
+	double m[2] = { -w*0.5+0.5, -h*0.5+0.5 };
+
+	glLineWidth(2);
+	Camera* camera = m_content->get_current_frame();
+	if (camera) {
+		Vec2d ep = camera->image_epi_point();
+		glColor3d(1, 1, 0);
+		glBegin(GL_LINES);
+		glVertex2d(u+m[0], v+m[1]);
+		glVertex2d(ep[0]+m[0], ep[1]+m[1]);
+		glEnd();
+	}
+
+
+	glLineWidth(1);		
 
 	m_current_image = image;
 
