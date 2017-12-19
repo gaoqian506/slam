@@ -34,6 +34,9 @@ shanghai:
 gongyuan:
 	./$(TARGET) data/videos/gongyuan.mp4	
 	
+dajiang:
+	./$(TARGET) data/videos/DJI_0229.MOV	
+	
 m1_left_8x8:
 	./$(TARGET) data/images/move_left_8x8_001.png data/images/move_left_8x8_002.png
 
@@ -45,6 +48,8 @@ tsukuba:
 	
 tsukuba2:
 	./$(TARGET) data/images/tsukuba_l.png data/images/tsukuba_r_rot.png
+
+
 	
 debug:
 	gdb ./$(TARGET)

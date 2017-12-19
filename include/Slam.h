@@ -143,6 +143,10 @@ private:
 	void update_depth_lsd7();
 	void transfer_depth_lsd7();
 
+	void build_lsd8(BuildFlag flag);
+	void prepare_dr_lsd8();
+	bool calc_dr_lsd8();
+
 
 	VideoSource* m_source;
 	bool m_working;

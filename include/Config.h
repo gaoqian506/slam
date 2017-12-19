@@ -70,6 +70,9 @@ public:
 		Of7,		// E(Rt) = (UrRt + Ut)^2
 		Lsd7,	 	// E(dr) = (dot(Ir, dr)-dg)^2
 					// E(ds) = (dot(Is, ds)-dg)^2 + (ds-dsi)^2
+		Lsd8,	 	// E =  w1(I(D, R, t, u)t)^2 +
+					//		w2(I(PI, R, t, u)t)^2;
+
 
 	};
 
@@ -120,6 +123,9 @@ public:
 	static double default_depth;
 	static double default_ddepth;
 	static Vec3d default_camera_pos;
+	static double default_plane[3];
+	static bool image_switch_list[128];
+	static double min_gradient_length2;
 
 
 };

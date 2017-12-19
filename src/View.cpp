@@ -174,7 +174,13 @@ void View::keyboard(unsigned char key,int x,int y) {
 	case 56:	// '8'
 	case 57:	// '9'
 		m_display_aspect = DisplayImage;
-		m_display_index = key - 49;
+		if (m_display_index == key - 49) {
+			Config::image_switch_list[m_display_index] =
+			 !Config::image_switch_list[m_display_index];
+		}
+		else {
+			m_display_index = key - 49;
+		}
 		// m_image = m_content->get_debug_image(
 		// 	m_display_index, m_key_index, &m_weight);
 		glutPostRedisplay();
@@ -190,7 +196,9 @@ void View::keyboard(unsigned char key,int x,int y) {
 			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
 		}
 		else {
-			Config::image_switch = !Config::image_switch;
+			//Config::image_switch = !Config::image_switch;
+			Config::image_switch_list[m_display_index] =
+			 !Config::image_switch_list[m_display_index];			
 		}
 		glutPostRedisplay();
 		break;

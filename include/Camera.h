@@ -47,6 +47,7 @@ public:
 	Vec9d rotation;
 	Vec3d plane_n;
 	double plane_d;
+	double plane[3];	// theta, phi, 1.0/rou
 	double movement;
 	double radius;
 	Intrinsic intrinsic;
@@ -57,14 +58,18 @@ public:
 	Image* gray;
 	Image* gradient[2];
 	Image* depth;
+	Image* depth2;
 	Image* points;
 	Image* epi_line;
 	Image* depth_weight;
 
 	Image* mask;
+	Image* mask2;
 	Image* residual;
+	Image* residual2;
 	Image* warp_gradient;
 	Image* warp;
+	Image* warp2;
 	Image* of_weight;
 	Image* epi_weight;
 	Image* optical_flow;

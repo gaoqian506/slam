@@ -18,6 +18,10 @@ Camera::Camera() : radius(20), movement(0) {
 	plane_n[2] = -1;
 	plane_d = 0.1;
 
+	plane[0] = Config::default_plane[0];
+	plane[1] = Config::default_plane[1];
+	plane[2] = Config::default_plane[2];
+
 	original = NULL;
 	gray = NULL;
 	gradient[0] = NULL;
