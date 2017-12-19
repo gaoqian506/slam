@@ -24,7 +24,7 @@ namespace ww {
 	
 	bool Config::only_calc_epi_dr = false;
 	bool Config::use_of_smooth_of4 = true;
-	double Config::min_depth_weight = 0.001;
+	double Config::min_depth_weight = 0;
 
 	bool Config::use_i1_constrain_lsd5 = true;
 	double Config::min_smooth_weight_lsd5 = 0.1;

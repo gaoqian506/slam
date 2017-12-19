@@ -146,6 +146,8 @@ private:
 	void build_lsd8(BuildFlag flag);
 	void prepare_dr_lsd8();
 	bool calc_dr_lsd8();
+	void update_depth_lsd8();
+	void smooth_depth_lsd8();	
 
 
 	VideoSource* m_source;
