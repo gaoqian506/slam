@@ -35,7 +35,7 @@ gongyuan:
 	./$(TARGET) data/videos/gongyuan.mp4	
 	
 dajiang:
-	./$(TARGET) data/videos/DJI_0229.MOV	
+	./$(TARGET) data/videos/dajiang0229.mp4
 	
 m1_left_8x8:
 	./$(TARGET) data/images/move_left_8x8_001.png data/images/move_left_8x8_002.png

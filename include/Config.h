@@ -126,6 +126,8 @@ public:
 	static double default_plane[3];
 	static bool image_switch_list[128];
 	static double min_gradient_length2;
+	static Vec3f default_depth_plane;
+	static double default_depth_weight;
 
 
 };

@@ -77,6 +77,7 @@ View::View(ViewContent* vc) {
 	glutMotionFunc(g_mouse_move_func);
 	glutPassiveMotionFunc(g_passive_mouse_move_func);
 	glClearColor(0.233, 0.156, 0.343, 1);
+	glEnable(GL_DEPTH_TEST);
 
 	
 	g_host = this;

@@ -1,6 +1,272 @@
 
 
 
+void Slam::update_depth_lsd8() {
+
+
+	std::cout << "Slam::update_depth_lsd8" << std::endl;
+
+	if (!m_key || !m_frame) { return; }
+
+	int total = m_width * m_height;
+	float* pwit = (float*)m_key->residual->data();
+	float* pg = (float*)m_key->gray->data();
+	//Vec2f* pdut = (Vec2f*)m_key->dut->data();
+	//Vec2f* put = (Vec2f*)m_key->optical_flow->data();
+
+	float* pdd = (float*)m_key->ddepth->data();
+	float* pd = (float*)m_key->depth->data();
+
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* pw = (float*)m_key->of_weight->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	int u, v, u2, v2, ik;
+	//float w, W, iu0[2], iu1[2];//, d;
+	//double A[4], iA[4], B[2], it, iuu[2], idet, iuiu[4];
+	//double lamda = Config::du_smooth_lamda_of3;
+	//double s = Config::stable_factor_of3;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	Intrinsic in = m_key->intrinsic;
+	double f1 = 1.0/in.f;
+	const double* t = m_frame->pos.val;
+
+	double a, b, c, ddk, x[2], it, w, iu[2], wm, dg;
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		a = 0;
+		b = 0;
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			ik = i + offid[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[ik]) {
+
+				x[0] = (u2-in.cx)*f1;
+				x[1] = (v2-in.cy)*f1;
+				iu[0] = piu0[ik];
+				iu[1] = piv0[ik];
+				it = pwit[ik];
+
+				c = iu[0]*t[0]+iu[1]*t[1]-
+					(iu[0]*x[0]+iu[1]*x[1])*t[2];
+				a += c*c;
+				b += c*it*f1;
+
+				if (Config::use_i1_constraint) {
+					iu[0] = pwiu1[ik][0];
+					iu[1] = pwiu1[ik][1];
+
+					c = iu[0]*t[0]+iu[1]*t[1]-
+						(iu[0]*x[0]+iu[1]*x[1])*t[2];
+					a += c*c;
+					b += c*it*f1;
+				}
+
+				pg = pg[ik]-pg[i];
+				w = ext(pg*pg*100)*pw[ik];	// sigma2 = 0.1*0.1
+
+
+
+				ddk = pd[ik]-pd[i];
+
+				//w = pw[ik] + Config::min_smooth_weight_lsd5;
+				//w *= Config::smooth_lamda_lsd5;
+				w = 0.01;
+
+				a += w;
+				b -= w*ddk;
+
+			}
+
+			
+		}
+		a += 1;
+		pdd[i] = -b / a;
+
+	}
+	//return is ok?
+	m_key->depth->add(m_key->ddepth);
+}
+
+void Slam::smooth_depth_lsd8() {
+
+	if (!m_key || !m_frame || true) { return; }
+
+	int total = m_width * m_height;	
+	int u, v, u2, v2, ik;
+
+	float* pw = (float*)m_key->depth_weight->data();
+	Vec3f* pp = (Vec3f*)m_key->epi_line->data();
+	float* pd = (float*)m_key->depth->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	m_key->depth_weight->copy_to(m_key->ddepth);
+	float* pws = (float*)m_key->ddepth->data();
+
+
+	int offid[4] = { -m_width, -1, 1, m_width };
+	int offx[4] = { 0, -1, 1, 0 };
+	int offy[4] = { -1, 0, 0, 1 };
+	float max, d;
+	bool need_update;
+	Vec3f pi;
+	Intrinsic in = m_key->intrinsic;
+	double f1 = 1.0 / m_key->intrinsic.f;
+	double x[2], n[3];	
+
+	for (int i = 0; i < total; i++) {
+
+		if (!pm[i]) { continue; }
+
+		u = i % m_width;
+		v = i / m_width;
+		max = pw[i];
+		need_update = false;
+
+		for (int k = 0; k < 4; k++) {
+
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			ik = i + offid[k];
+			
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height) {
+				if (pws[ik] > max) {
+					max = pw[ik];
+					pi = pp[ik];
+					d = pd[ik];
+					need_update = true;
+				}
+			}
+		}
+
+		if (need_update) {
+			if (pi[2] != 0) {
+				x[0] = f1*(u-in.cx);
+				x[1] = f1*(v-in.cy);
+				n[0] = sin(pi[0])*cos(pi[1]);
+				n[1] = sin(pi[0])*sin(pi[1]);
+				n[2] = cos(pi[0]);
+				d = pi[2]*(x[0]*n[0]+x[1]*n[1]+n[2]);
+			}
+			pd[i] = d;
+			pp[i] = pi;
+			pw[i] = max;
+		}		
+
+
+	}
+
+
+
+
+}
+
+
+void Slam::update_depth_lsd8() {
+
+	if (!m_key || !m_frame) { return; }
+
+	int total = m_width * m_height;
+	float* pw1 = (float*)m_key->of_weight->data();
+	float* pw2 = (float*)m_key->epi_weight->data();
+	float* pw3 = (float*)m_key->depth_weight->data();
+	Vec3f* pp = (Vec3f*)m_key->epi_line->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pd2 = (float*)m_key->depth2->data();
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+
+	Vec3d pi = m_key->plane;
+	Vec3f pif(pi[0], pi[1], pi[2]), pi2;
+	double f1 = 1.0 / m_key->intrinsic.f;
+	double x[2], n[3], l = m_frame->pos.length();
+	int u, v;
+	float w[3], wsum;
+
+	for (int i = 0; i < total; i++) {
+
+		if (!pm[i]) { continue; }
+
+		w[0] = pw1[i]*l*0;
+		w[1] = pw2[i]*l;
+		w[2] = pw3[i];
+
+		// if (pw2[i] > pw1[i]) {
+		// 	pd[i] = pd2[i];
+		// }
+
+		wsum = w[0]+w[1]+w[2];
+		pi2 = (pp[i]*(w[2]+w[0])+pif*w[1])/wsum;
+		pp[i] = pi2;
+		//if (wsum > 20) { wsum = 20; }
+		pw3[i] = wsum;
+
+		n[0] = sin(pi2[0])*cos(pi2[1]);
+		n[1] = sin(pi2[0])*sin(pi2[1]);
+		n[2] = cos(pi2[0]);
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+		pd[i] = pi2[2]*(x[0]*n[0]+x[1]*n[1]+n[2]);
+
+	}
+}
+
+
+
+		wsum = w[0]+w[1]+w[2];
+		pi2 = (pp[i]*(w[2]+w[0])+pif*w[1])/wsum;
+		pp[i] = pi2;
+		if (wsum > 20) { wsum = 20; }
+		pw3[i] = wsum;
+
+		n[0] = sin(pi2[0])*cos(pi2[1]);
+		n[1] = sin(pi2[0])*sin(pi2[1]);
+		n[2] = cos(pi2[0]);
+		u = i % m_width - m_frame->intrinsic.cx;
+		v = i / m_width - m_frame->intrinsic.cy;
+		x[0] = f1 * u;
+		x[1] = f1 * v;
+		pd[i] = pi2[2]*(x[0]*n[0]+x[1]*n[1]+n[2]);
+
+	double n[3], 1; = {
+		sin(pi[0])*cos(pi[1]),
+		sin(pi[0])*sin(pi[1]),
+		cos(pi[0])
+	};
+
+		if (w[0] > w[2]) {
+			w[2] = w[0];
+			pw3[i] = w[0];
+		}
+		if (w[1] > w[2]) {
+
+			u = i % m_width - m_frame->intrinsic.cx;
+			v = i / m_width - m_frame->intrinsic.cy;
+			x[0] = f1 * u;
+			x[1] = f1 * v;
+			pd[i] = pi[2]*(x[0]*n[0]+x[1]*n[1]+n[2]);
+			pp[i] = pif;
+			pw3[i] = w[1];
+		}
+
+
 				x[0] = (u2-in.cx)*f1;
 				x[1] = (v2-in.cy)*f1;
 				eut[0] = peof[ik][0];

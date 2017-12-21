@@ -49,11 +49,14 @@ namespace ww {
 	int Config::build_steps = 5;
 	int Config::build_iterations = 50;
 	double Config::mask_radio_thresh = 0.8;
-	bool Config::use_i1_constraint = true;
+	bool Config::use_i1_constraint = false;
 	double Config::default_depth = 0.1;
 	double Config::default_ddepth = 1;
 	Vec3d Config::default_camera_pos = Vec3d(0, 0, 0);
-	double Config::default_plane[3] = { 0, 0, 1 };
+	//double Config::default_plane[3] = { -1, -3.1415926*0.5, 0.15 };
+	double Config::default_plane[3] = { 0, 0, 0.1 };
 	bool Config::image_switch_list[128] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  };
 	double Config::min_gradient_length2 = 0.005;
+	Vec3f Config::default_depth_plane = Vec3f(0, 0, 0.1);
+	double Config::default_depth_weight = 0;
 }

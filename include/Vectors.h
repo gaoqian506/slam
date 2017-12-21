@@ -81,6 +81,48 @@ struct Vec3f {
 		return val[idx];
 	}
 
+	Vec3f& operator/=(float d) {
+	
+		val[0] /= d;
+		val[1] /= d;
+		val[2] /= d;
+		return *this;
+	}
+
+	Vec3f& operator*=(float d) {
+	
+		val[0] *= d;
+		val[1] *= d;
+		val[2] *= d;
+		return *this;
+	}	
+
+	Vec3f& operator+=(const Vec3f& right) {
+	
+		val[0] += right[0];
+		val[1] += right[1];
+		val[2] += right[2];
+		return *this;
+	}	
+
+	Vec3f operator*(float f) {
+		Vec3f r(*this);
+		r *= f;
+		return r;
+	}	
+
+	Vec3f operator/(float f) {
+		Vec3f r(*this);
+		r /= f;
+		return r;
+	}	
+
+	Vec3f operator+(const Vec3f& right) {
+		Vec3f r(*this);
+		r += right;
+		return r;
+	}
+
 	
 	float length2() { return val[0]*val[0]+val[1]*val[1]+val[2]*val[2]; }
 	float val[3];
