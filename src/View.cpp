@@ -94,6 +94,7 @@ View::View(ViewContent* vc) {
 	m_current_image = 0;
 	m_point_size = 1;
 	MatrixToolbox::identity(m_view_matrix);
+	m_mouse_button = 0;
 
 
 }
@@ -186,15 +187,15 @@ void View::keyboard(unsigned char key,int x,int y) {
 		// 	m_display_index, m_key_index, &m_weight);
 		glutPostRedisplay();
 		break;
-	case 'w':	// move forward
-		if (m_display_aspect == DisplaySpace) {
-			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
-		}
-		glutPostRedisplay();
-		break;
+	// case 'w':	// move forward
+	// 	if (m_display_aspect == DisplaySpace) {
+	// 		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
+	// 	}
+	// 	glutPostRedisplay();
+	// 	break;
 	case 's':	// move backward
 		if (m_display_aspect == DisplaySpace) {	
-			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
+			// SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, dist));
 		}
 		else {
 			//Config::image_switch = !Config::image_switch;
@@ -203,18 +204,18 @@ void View::keyboard(unsigned char key,int x,int y) {
 		}
 		glutPostRedisplay();
 		break;
-	case 'a':	// move left
-		if (m_display_aspect == DisplaySpace) {
-			SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
-		}
-		glutPostRedisplay();
-		break;
-	case 'd':	// move right
-		if (m_display_aspect == DisplaySpace) {
-			SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
-		}
-		glutPostRedisplay();
-		break;
+	// case 'a':	// move left
+	// 	if (m_display_aspect == DisplaySpace) {
+	// 		SpaceToolbox::translate(m_view_matrix, Vec3d(dist, 0, 0));
+	// 	}
+	// 	glutPostRedisplay();
+	// 	break;
+	// case 'd':	// move right
+	// 	if (m_display_aspect == DisplaySpace) {
+	// 		SpaceToolbox::translate(m_view_matrix, Vec3d(-dist, 0, 0));
+	// 	}
+	// 	glutPostRedisplay();
+	// 	break;
 	case 32:	// space
 		//if (m_display_aspect == DisplaySpace) {
 		//	MatrixToolbox::identity(m_view_matrix);
@@ -358,13 +359,16 @@ void View::special(int key,int x,int y) {
 
 void View::mouse(int button, int state, int x, int y) {
 
-	double dist = 0.05;
+	double dist = 0.25;
 
 	switch(button) {
 
-	case 1:
-
+	case GLUT_LEFT_BUTTON:
+		m_mouse_button = 1;
 		break;
+	case GLUT_RIGHT_BUTTON:
+		m_mouse_button = 2;
+		break;		
 	case 3:
 		if (m_display_aspect == DisplaySpace) {
 			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -dist));
@@ -385,6 +389,8 @@ void View::mouse(int button, int state, int x, int y) {
 		break;
 	}
 
+	if (state ==  GLUT_UP) { m_mouse_button = 0; }
+
 
 
 }
@@ -397,7 +403,13 @@ void View::mouse_move(int x, int y) {
 	if (m_display_aspect == DisplaySpace && abs(dx) < 20 && abs(dy) < 20) {
 		Vec9d dR = SpaceToolbox::make_rotation(-dy*m_vpp, dx*m_vpp);
 		SpaceToolbox::rotate(m_view_matrix, dR);
-		SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -0.02));
+		if (m_mouse_button == 1) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, -0.02));	
+		}
+		else if (m_mouse_button == 2) {
+			SpaceToolbox::translate(m_view_matrix, Vec3d(0, 0, +0.02));	
+		}		
+		
 		glutPostRedisplay();
 	}
 

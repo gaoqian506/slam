@@ -36,7 +36,7 @@ namespace ww {
 	int Config::max_iterations_of5 = 50;
 
 	bool Config::image_switch = true;
-	int Config::win_size[2] = { 500, 500 };
+	int Config::win_size[2] = { 800, 800 };
 	//bool Config::use_canonical_intrinsic = true;
 
 	bool Config::use_trace_A_lsd6 = false;

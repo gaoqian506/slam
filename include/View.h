@@ -73,6 +73,7 @@ private:
 	Vec2d m_epi_point;
 	Image* m_image;
 	Image* m_weight;
+	int m_mouse_button;
 	
 
 
