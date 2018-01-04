@@ -72,6 +72,11 @@ public:
 					// E(ds) = (dot(Is, ds)-dg)^2 + (ds-dsi)^2
 		Lsd8,	 	// E =  w1(I(D, R, t, u)t)^2 +
 					//		w2(I(PI, R, t, u)t)^2;
+		Lsd9,	 	// E =  w1(I(D, R, t, u)t)^2 +
+					//		w2(I(PI, R, t, u)t)^2;
+					// E(dpi) = (dot(Ipi, dpi)+it)^2 +
+					//			wi(dpi - dpii)^2 +
+					//			wpi(dpi - dpid)^2;
 
 
 	};

@@ -669,7 +669,10 @@ void Slam::build(BuildFlag flag/* = BuildAll*/) {
 		break;
 	case Config::Lsd8:
 		build_lsd8(flag);
-		break;		
+		break;
+	case Config::Lsd9:
+		build_lsd9(flag);
+		break;				
 	}
 
 	gettimeofday(&end, NULL); 
@@ -7100,6 +7103,81 @@ void Slam::smooth_depth_lsd8() {
 	//return is ok?
 	m_key->depth->add(m_key->ddepth);
 
+}
+
+
+void Slam::build_lsd9(BuildFlag flag) {
+
+	Image* image = NULL;
+	Image* resized = NULL;
+	int times = 0;
+	int steps = 0;
+	bool ok;
+	while(true) {
+		if ((flag & BuildReadFrame)) {
+			if (m_source->read(image)) {
+				image->resize(resized);
+				initialize(resized);
+				preprocess(resized);
+			}
+			else { break; }
+		}
+		times = 0;
+		while(flag & BuildOpticalFlow) {
+			prepare_dr_lsd9();
+			ok = calc_dr_lsd9();
+			//->add(m_dut);
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::build_iterations
+			) { break; }
+			times++;
+		}
+
+		times = 0;		
+		while(flag & BuildEpipolar) {
+			ok = update_depth_lsd9();
+			prepare_dr_lsd9();
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::build_iterations
+			) { break; }
+			times++;
+		}
+		/*		
+		while(flag & BuildTranslate) {
+			ok = calc_t_of3();
+			if (!(flag & BuildIterate) || ok) { break; }
+		}
+		*/
+		// if (flag & BuildDepth) {
+		// 	update_depth_lsd8();
+		// 	smooth_depth_lsd8();
+		// 	prepare_dr_lsd8();
+		// 	//update_depth_lsd6();
+		// 	//unproject_points_lsd5();
+		// }
+		
+		if (flag & BuildKeyframe) {
+			update_keyframe(resized);
+		}
+		steps++;
+		if (!(flag & BuildSequence) || 
+			steps >= Config::build_steps)
+		{ break; }
+		if (m_display_delegate) {
+			m_display_delegate->display_with(this);
+		}
+	}
+	if (image) { delete image; }
+	if (resized) { delete resized; }	
+}
+void Slam::prepare_dr_lsd9() {
+
+}
+bool Slam::calc_dr_lsd9() {
+	return false;
+}
+bool Slam::update_depth_lsd9() {
+	return false;
 }
 
 

@@ -7,7 +7,7 @@ namespace ww {
 	bool Config::manually_content = true;
 	//bool Config::epipolar_mode = true;
 	//Config::Method Config::method = Config::Entropy5;
-	Config::Method Config::method = Config::Lsd8;
+	Config::Method Config::method = Config::Lsd9;
 	//Config::Method Config::method = Config::Epi2;
 	//Config::Method Config::method = Config::Of7;
 	//Config::Method Config::method = Config::Gof1;
