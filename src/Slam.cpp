@@ -3217,10 +3217,11 @@ void Slam::create_keyframe(Image* image) {
 	m_key->of_residual = new CvImage(m_width, m_height, Image::Float32, 2);
 	m_key->eof = new CvImage(m_width, m_height, Image::Float32, 2);
 	m_key->epi_line = new CvImage(m_width, m_height, Image::Float32, 3);
+	m_key->plane_pi = new CvImage(m_width, m_height, Image::Float32, 3);
 	m_key->depth->set(Config::default_depth);
 	m_key->depth_weight->set(Config::default_depth_weight);
 
-	Vec3f* pp = (Vec3f*)m_key->epi_line->data();
+	Vec3f* pp = (Vec3f*)m_key->plane_pi->data();
 	float* pd = (float*)m_key->depth->data();
 	int total = m_width*m_height;
 	Vec3f pi = Config::default_depth_plane;
@@ -7172,12 +7173,170 @@ void Slam::build_lsd9(BuildFlag flag) {
 }
 void Slam::prepare_dr_lsd9() {
 
+
+	if (!m_key || !m_frame) { return; }
+	
+	int total = m_width * m_height;
+	int u, v;
+	Vec3d m;
+	Vec4f x0, x1;
+	float *pfi1, *pfiu, *pfiv;
+	double d, w, w2, iu0[2], iu0l2, wiu[2];
+
+	unsigned char* pm1 = (unsigned char*)m_key->mask->data();
+	unsigned char* pm2 = (unsigned char*)m_key->mask2->data();
+	float* pi0 = (float*)m_key->gray->data();
+	float* pi1 = (float*)m_frame->gray->data();
+	float* pit1 = (float*)m_key->residual->data();
+	float* pit2 = (float*)m_key->residual2->data();
+	float* pwi1 = (float*)m_key->warp->data();
+	float* pwi2 = (float*)m_key->warp2->data();
+	float* pw = (float*)m_key->of_weight->data();
+	float* pw2 = (float*)m_key->epi_weight->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pd2 = (float*)m_key->depth2->data();	
+	Vec4f* px = (Vec4f*)m_key->points->data();
+
+	float* piu0 = (float*)m_key->gradient[0]->data();
+	float* piv0 = (float*)m_key->gradient[1]->data();
+	float* piu1 = (float*)m_frame->gradient[0]->data();
+	float* piv1 = (float*)m_frame->gradient[1]->data();
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	Vec3f* ppp = (Vec3f*)m_key->plane_pi->data();
+
+	Intrinsic in0 = m_key->intrinsic;
+	Intrinsic in1 = m_frame->intrinsic;
+	double f1 = 1.0/in0.f;
+	Vec9d R = m_frame->rotation;
+	Vec3d t = m_frame->pos;
+	double* pi = m_key->plane;
+	double n[3] = {
+		sin(pi[0])*cos(pi[1]),
+		sin(pi[0])*sin(pi[1]),
+		cos(pi[0])
+	};
+	double nd[3];
+
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		iu0[0] = piu0[i];
+		iu0[1] = piv0[i];
+		iu0l2 = iu0[0]*iu0[0]+iu0[1]*iu0[1];		
+
+		x0[0] = (u-in0.cx)*f1;
+		x0[1] = (v-in0.cy)*f1;
+		x0[2] = 1;		
+
+		nd[0] = sin(ppp[i][0])*cos(ppp[i][1]);
+		nd[1] = sin(ppp[i][0])*sin(ppp[i][1]);
+		nd[2] = cos(ppp[i][0]);
+
+		d = ppp[i][2]*(x0[0]*nd[0]+x0[1]*nd[1]+nd[2]);
+		pd[i] = d;
+
+		x0[3] = d;
+		px[i] = x0;	
+
+		x1[0] = R[0]*x0[0]+R[1]*x0[1]+R[2]*x0[2]+t[0]*x0[3];
+		x1[1] = R[3]*x0[0]+R[4]*x0[1]+R[5]*x0[2]+t[1]*x0[3];
+		x1[2] = R[6]*x0[0]+R[7]*x0[1]+R[8]*x0[2]+t[2]*x0[3];
+		x1[3] = x0[3];
+		x1 /= x1[2];
+
+		m[0] = in1.f*x1[0]+in1.cx;
+		m[1] = in1.f*x1[1]+in1.cy;
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1 ) {
+		
+			pm1[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+
+			pfi1 = pi1 + v * m_width + u;
+			pfiu = piu1 + v * m_width + u;
+			pfiv = piv1 + v * m_width + u;
+			pwi1[i] = SAMPLE_2D(pfi1[0], pfi1[1], pfi1[m_width], pfi1[m_width+1], m[0], m[1]);
+			pit1[i] = pwi1[i] - pi0[i];
+			pwiu1[i][0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
+			pwiu1[i][1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
+			w = iu0[0]*pwiu1[i][0]+iu0[1]*pwiu1[i][1];
+			if (w < 0) { w = 0; }
+			pw[i] = w;
+		}
+		else { 
+			pm1[i] = 0;
+			pit1[i] = 0;
+			pwi1[i] = 0;
+			pw[i] = 0;
+
+			pm2[i] = 0;
+			pwi2[i] = 0;
+			pit2[i] = 0;
+			pw2[i] = 0;
+			pd2[i] = 0;
+
+			continue;			
+		}
+
+
+
+		d = pi[2]*(x0[0]*n[0]+x0[1]*n[1]+x0[2]*n[2]);
+		pd2[i] = d;
+		x0[3] = d;
+
+
+		x1[0] = R[0]*x0[0]+R[1]*x0[1]+R[2]*x0[2]+t[0]*x0[3];
+		x1[1] = R[3]*x0[0]+R[4]*x0[1]+R[5]*x0[2]+t[1]*x0[3];
+		x1[2] = R[6]*x0[0]+R[7]*x0[1]+R[8]*x0[2]+t[2]*x0[3];
+		x1[3] = x0[3];
+		x1 /= x1[2];
+
+		m[0] = in1.f*x1[0]+in1.cx;
+		m[1] = in1.f*x1[1]+in1.cy;
+
+		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1 ) {
+		
+			pm2[i] = 255;
+			u = (int)m[0];
+			v = (int)m[1];
+			m[0] -= u;
+			m[1] -= v;
+
+			pfi1 = pi1 + v * m_width + u;
+			pfiu = piu1 + v * m_width + u;
+			pfiv = piv1 + v * m_width + u;
+			pwi2[i] = SAMPLE_2D(pfi1[0], pfi1[1], pfi1[m_width], pfi1[m_width+1], m[0], m[1]);
+			pit2[i] = pwi2[i] - pi0[i];
+			wiu[0] = SAMPLE_2D(pfiu[0], pfiu[1], pfiu[m_width], pfiu[m_width+1], m[0], m[1]);
+			wiu[1] = SAMPLE_2D(pfiv[0], pfiv[1], pfiv[m_width], pfiv[m_width+1], m[0], m[1]);
+
+			w2 = iu0[0]*wiu[0]+iu0[1]*wiu[1];
+
+			if (w2 < 0) { w2 = 0; }
+			pw2[i] = w2;				
+
+		}
+		else { 
+			pm2[i] = 0;
+			pwi2[i] = 0;
+			pit2[i] = 0;
+			pw2[i] = 0;
+			pd2[i] = 0;
+		}		
+	}
+
 }
 bool Slam::calc_dr_lsd9() {
-	return false;
+	return true;
 }
 bool Slam::update_depth_lsd9() {
-	return false;
+	return true;
 }
 
 

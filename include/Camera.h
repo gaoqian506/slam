@@ -78,6 +78,7 @@ public:
 	Image* eof;
 	Image* ddepth;
 	Image* of_residual;
+	Image* plane_pi;
 
 //Config::depth_grid_size_lsd6[0],
 //		Config::depth_grid_size_lsd6[1]

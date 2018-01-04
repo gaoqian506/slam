@@ -1,6 +1,35 @@
 
 
 
+
+	// Vec3f* pp = (Vec3f*)m_key->plane_pi->data();
+	// float* pd = (float*)m_key->depth->data();
+	// int total = m_width*m_height;
+	// Vec3f pi = Config::default_depth_plane;
+	// double n[3] = {
+	// 	sin(pi[0])*cos(pi[1]),
+	// 	sin(pi[0])*sin(pi[1]),
+	// 	cos(pi[0])
+	// };	
+	// Intrinsic in = m_key->intrinsic;
+	// double f1 = 1.0/in.f, x[2];
+	// int u, v;
+
+	// for (int i = 0; i < total; i++) {
+
+	// 	u = i % m_width - in.cx; 
+	// 	v = i / m_width - in.cy;
+
+	// 	x[0] = u*f1;
+	// 	x[1] = v*f1;
+
+	// 	pp[i] = pi;
+	// 	pd[i] = pi[2]*(x[0]*n[0]+x[1]*n[1]+n[2]);
+
+	// }
+
+		//d = pd[i];		
+
 void Slam::update_depth_lsd8() {
 
 
