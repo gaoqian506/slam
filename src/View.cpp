@@ -452,7 +452,7 @@ void View::draw_content() {
 	int viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
 	gluPerspective(60.0, (double)viewport[2]/viewport[3], 0.1, 1000);
-	m_vpp = 60.0/viewport[3]/180*3.1415926535898;
+	m_vpp = 120.0/viewport[3]/180*3.1415926535898;
 	//gluPerspective(60, 1, 0.1, 1000);
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();

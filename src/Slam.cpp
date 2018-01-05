@@ -7484,7 +7484,65 @@ bool Slam::calc_dr_lsd9() {
 	return false;	
 }
 bool Slam::update_depth_lsd9() {
-	return true;
+
+	std::cout << "Slam::smooth_depth_lsd8" << std::endl;
+
+	if (!m_key || !m_frame) { return false; }
+
+	int total = m_width * m_height;
+
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+	Vec3f* ppp = (Vec3f*)m_key->plane_pi->data();
+	Vec3f* pdpp = (Vec3f*)m_key->epi_line->data();
+	float* pw2 = (float*)m_key->epi_weight->data();
+
+	int u, v, u2, v2, ik;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	double* pi = m_key->plane;
+	double dpp[3], a[3], b, w;
+
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		memset(a, 0, sizeof(a));
+		b = 0;
+
+		for (int k = 0; k < 9; k++) {
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			ik = i + offid[k];
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[ik]) {
+
+				w = pw2[ik];
+				a[0] += w*(pi[0]-ppp[ik][0]);
+				a[1] += w*(pi[1]-ppp[ik][1]);
+				a[2] += w*(pi[2]-ppp[ik][2]);
+				b += w;
+
+			}
+		}
+
+		pdpp[i][0] = a[0]/(b+0.0001);
+		pdpp[i][1] = a[1]/(b+0.0001);
+		pdpp[i][2] = a[2]/(b+0.0001);
+
+	}
+
+	m_key->plane_pi->add(m_key->epi_line);
+
+	//return is ok?
+	return false;
 }
 
 
