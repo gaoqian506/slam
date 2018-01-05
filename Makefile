@@ -49,6 +49,9 @@ tsukuba:
 tsukuba2:
 	./$(TARGET) data/images/tsukuba_l.png data/images/tsukuba_r_rot.png
 
+kitti:
+	./$(TARGET) data/images/kitti/000000.png data/images/kitti/000001.png data/images/kitti/000002.png data/images/kitti/000003.png
+
 
 	
 debug:
