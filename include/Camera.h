@@ -68,6 +68,7 @@ public:
 	Image* residual;
 	Image* residual2;
 	Image* warp_gradient;
+	Image* warp_gradient2;
 	Image* warp;
 	Image* warp2;
 	Image* of_weight;

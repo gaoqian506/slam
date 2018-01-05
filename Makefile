@@ -50,7 +50,15 @@ tsukuba2:
 	./$(TARGET) data/images/tsukuba_l.png data/images/tsukuba_r_rot.png
 
 kitti:
-	./$(TARGET) data/images/kitti/000000.png data/images/kitti/000001.png data/images/kitti/000002.png data/images/kitti/000003.png
+	./$(TARGET) \
+		data/images/kitti/000000.png \
+		data/images/kitti/000001.png \
+		data/images/kitti/000002.png \
+		data/images/kitti/000003.png \
+		data/images/kitti/000004.png \
+		data/images/kitti/000005.png \
+		data/images/kitti/000006.png \
+		data/images/kitti/000007.png 		
 
 
 	
