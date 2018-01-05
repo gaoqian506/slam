@@ -7551,13 +7551,13 @@ bool Slam::update_depth_lsd9() {
 			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[ik]) {
 
 
-				w = pw[ik];
+				w = pw[ik] + 0.0001;
 				a[0] += w*(ppp[ik][0]-ppp[i][0]);
 				a[1] += w*(ppp[ik][1]-ppp[i][1]);
 				a[2] += w*(ppp[ik][2]-ppp[i][2]);
 				b += w;
 
-				w = pw2[ik];
+				w = pw2[ik] + 0.001;
 				a[0] += w*(pi[0]-ppp[i][0]);
 				a[1] += w*(pi[1]-ppp[i][1]);
 				a[2] += w*(pi[2]-ppp[i][2]);
@@ -7566,10 +7566,13 @@ bool Slam::update_depth_lsd9() {
 			}
 		}
 
-		pdpp[i][0] = a[0]/(b+0.0001);
-		pdpp[i][1] = a[1]/(b+0.0001);
-		pdpp[i][2] = a[2]/(b+0.0001);
+		pdpp[i][0] = a[0] / b;
+		pdpp[i][1] = a[1] / b;
+		pdpp[i][2] = a[2] / b;
 
+		// pdpp[i][0] = a[0]/(b+0.0001);
+		// pdpp[i][1] = a[1]/(b+0.0001);
+		// pdpp[i][2] = a[2]/(b+0.0001);
 	}
 
 	m_key->plane_pi->add(m_key->epi_line);
