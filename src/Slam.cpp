@@ -7549,7 +7549,7 @@ bool Slam::update_depth_lsd9() {
 	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
 
 	//double* pi = m_key->plane;
-	double dpp[3], a[3], b, w;
+	double dpp[3], a, b[3], w;
 	double dg, id, l[3], dpi[3], ipi[3], npi[6], iu[2], n[3], x[3];
 
 
@@ -7559,8 +7559,8 @@ bool Slam::update_depth_lsd9() {
 		u = i % m_width;
 		v = i / m_width;
 
-		memset(a, 0, sizeof(a));
-		b = 0;
+		a = 0;
+		memset(b, 0, sizeof(b));
 
 		for (int k = 0; k < 9; k++) {
 
@@ -7610,17 +7610,16 @@ bool Slam::update_depth_lsd9() {
 				ipi[1] = id*dpi[1];
 				ipi[2] = id*dpi[2];
 
-				a[0] += dg*ipi[0];
-				a[1] += dg*ipi[1];
-				a[2] += dg*ipi[2];
-
-				b -= ipi[0]*ipi[0]+ipi[1]*ipi[1]+ipi[2]*ipi[2];
+				b[0] += dg*ipi[0];
+				b[1] += dg*ipi[1];
+				b[2] += dg*ipi[2];
+				a += ipi[0]*ipi[0]+ipi[1]*ipi[1]+ipi[2]*ipi[2];
 
 				w = 0.1;// pw[ik] + 0.0001;
-				a[0] += w*(ppp[ik][0]-ppp[i][0]);
-				a[1] += w*(ppp[ik][1]-ppp[i][1]);
-				a[2] += w*(ppp[ik][2]-ppp[i][2]);
-				b += w;
+				b[0] -= w*(ppp[ik][0]-ppp[i][0]);
+				b[1] -= w*(ppp[ik][1]-ppp[i][1]);
+				b[2] -= w*(ppp[ik][2]-ppp[i][2]);
+				a += w;
 
 				// w = pw2[ik] + 0.001;
 				// a[0] += w*(pi[0]-ppp[i][0]);
@@ -7635,9 +7634,9 @@ bool Slam::update_depth_lsd9() {
 		// pdpp[i][1] = a[1] / b;
 		// pdpp[i][2] = a[2] / b;
 
-		pdpp[i][0] = a[0]/(b+0.0001);
-		pdpp[i][1] = a[1]/(b+0.0001);
-		pdpp[i][2] = a[2]/(b+0.0001);
+		pdpp[i][0] = -b[0]/(a+0.0001);
+		pdpp[i][1] = -b[1]/(a+0.0001);
+		pdpp[i][2] = -b[2]/(a+0.0001);
 	}
 
 	m_key->plane_pi->add(m_key->epi_line);
