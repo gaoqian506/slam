@@ -45,6 +45,7 @@ Slam::Slam(VideoSource* vs) : m_working(false), m_camera_count(0), m_key(NULL), 
 	m_pixel_info[0] = 0;
 	m_res[0] = 1;
 	m_res[1] = 1;
+	m_interval = 0;
 
 	
 }
@@ -7394,6 +7395,7 @@ bool Slam::calc_dr_lsd9() {
 		}
 
 		w = pw[i];
+		//w =1 ;
 
 		x[0] = f1 * u;
 		x[1] = f1 * v;
@@ -7409,12 +7411,12 @@ bool Slam::calc_dr_lsd9() {
 		a[4] = x[2]*l[0]-x[0]*l[2];
 		a[5] = x[0]*l[1]-x[1]*l[0];	
 
-		a[0] = 0;
-		a[1] = 0;
-		a[2] = 0;
-		a[3] = 0;
-		a[4] = 0;
-		a[5] = 0;		
+		// a[0] = 0;
+		// a[1] = 0;
+		// a[2] = 0;
+		// a[3] = 0;
+		// a[4] = 0;
+		// a[5] = 0;		
 
 		for (int j = 0; j < 36; j++) {
 			row = j / 6;
@@ -7429,15 +7431,17 @@ bool Slam::calc_dr_lsd9() {
 
 		if (!pm2[i]) { continue; }
 
-		ww[0] = piu[i]*piu[i]+piv[i]*piv[i]-pw[i];
-		if (ww[0] < 0){ ww[0] = 0; }
+		// ww[0] = piu[i]*piu[i]+piv[i]*piv[i]-pw[i];
+		// if (ww[0] < 0){ ww[0] = 0; }
 
-		ww[1] = 0;
-		if (Config::use_i1_constraint) {
-			ww[1] = pwiu1[i][0]*pwiu1[i][0]+pwiu1[i][0]*pwiu1[i][0]-pw[i];
-			if (ww[1] < 0){ ww[1] = 0; }
-		}
-		w2 = ww[0]>ww[1] ? ww[0] : ww[1];
+		// ww[1] = 0;
+		// if (Config::use_i1_constraint) {
+		// 	ww[1] = pwiu1[i][0]*pwiu1[i][0]+pwiu1[i][0]*pwiu1[i][0]-pw[i];
+		// 	if (ww[1] < 0){ ww[1] = 0; }
+		// }
+		// w2 = ww[0]>ww[1] ? ww[0] : ww[1];
+		w2 = 1 - pw[i];
+
 		pdd[i] = w2;
 
 		dg = pit2[i];
