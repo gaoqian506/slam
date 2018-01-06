@@ -7428,18 +7428,17 @@ bool Slam::calc_dr_lsd9() {
 		}
 
 
-		if (!pm2[i] && true) { continue; }
+		if (!pm2[i]) { continue; }
 
 		ww[0] = piu[i]*piu[i]+piv[i]*piv[i]-pw[i];
 		if (ww[0] < 0){ ww[0] = 0; }
 		ww[1] = pwiu1[i][0]*pwiu1[i][0]+pwiu1[i][0]*pwiu1[i][0]-pw[i];
 		if (ww[1] < 0){ ww[1] = 0; }
 		w2 = ww[0]>ww[1] ? ww[0] : ww[1];
+		pdd[i] = w2;
 
 		dg = pit2[i];
 		d = pd2[i];
-		if (w2 < 0) { w2 = 0; }
-		pdd[i] = w2;
 
 		iu[0] = piu[i];
 		iu[1] = piv[i];
