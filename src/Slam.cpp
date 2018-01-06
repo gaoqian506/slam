@@ -7235,7 +7235,7 @@ void Slam::prepare_dr_lsd9() {
 
 		x0[0] = (u-in0.cx)*f1;
 		x0[1] = (v-in0.cy)*f1;
-		x0[2] = 1;		
+		x0[2] = 1;
 
 		nd[0] = sin(ppp[i][0])*cos(ppp[i][1]);
 		nd[1] = sin(ppp[i][0])*sin(ppp[i][1]);
@@ -7388,7 +7388,6 @@ bool Slam::calc_dr_lsd9() {
 		iu[0] = piu[i];
 		iu[1] = piv[i];
 
-
 		if (Config::use_i1_constraint) {
 			iu[0] += pwiu1[i][0];
 			iu[1] += pwiu1[i][1];
@@ -7410,12 +7409,12 @@ bool Slam::calc_dr_lsd9() {
 		a[4] = x[2]*l[0]-x[0]*l[2];
 		a[5] = x[0]*l[1]-x[1]*l[0];	
 
-		// a[0] = 0;
-		// a[1] = 0;
-		// a[2] = 0;
-		// a[3] = 0;
-		// a[4] = 0;
-		// a[5] = 0;		
+		a[0] = 0;
+		a[1] = 0;
+		a[2] = 0;
+		a[3] = 0;
+		a[4] = 0;
+		a[5] = 0;		
 
 		for (int j = 0; j < 36; j++) {
 			row = j / 6;
@@ -7432,8 +7431,12 @@ bool Slam::calc_dr_lsd9() {
 
 		ww[0] = piu[i]*piu[i]+piv[i]*piv[i]-pw[i];
 		if (ww[0] < 0){ ww[0] = 0; }
-		ww[1] = pwiu1[i][0]*pwiu1[i][0]+pwiu1[i][0]*pwiu1[i][0]-pw[i];
-		if (ww[1] < 0){ ww[1] = 0; }
+
+		ww[1] = 0;
+		if (Config::use_i1_constraint) {
+			ww[1] = pwiu1[i][0]*pwiu1[i][0]+pwiu1[i][0]*pwiu1[i][0]-pw[i];
+			if (ww[1] < 0){ ww[1] = 0; }
+		}
 		w2 = ww[0]>ww[1] ? ww[0] : ww[1];
 		pdd[i] = w2;
 
@@ -7453,8 +7456,8 @@ bool Slam::calc_dr_lsd9() {
 		l[2] = -(u*iu[0]+v*iu[1]);
 
 		id = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
-		dpi[0] = pi[2]*(x[0]*npi[0]+x[1]*npi[1]-x[2]*npi[2]);
-		dpi[1] = pi[2]*(x[0]*npi[3]+x[1]*npi[4]-x[2]*npi[5]);
+		dpi[0] = pi[2]*(x[0]*npi[0]+x[1]*npi[1]+x[2]*npi[2]);
+		dpi[1] = pi[2]*(x[0]*npi[3]+x[1]*npi[4]+x[2]*npi[5]);
 		dpi[2] = x[0]*n[0]+x[1]*n[1]+x[2]*n[2];
 
 		a[0] = d*l[0];
@@ -7521,6 +7524,16 @@ bool Slam::update_depth_lsd9() {
 	float* pw = (float*)m_key->of_weight->data();
 	float* pw2 = (float*)m_key->epi_weight->data();
 
+	float* pit = (float*)m_key->residual->data();
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
+	//Vec2f* pwiu2 = (Vec2f*)m_key->warp_gradient2->data();
+	//Vec4f* px = (Vec4f*)m_key->points->data();
+	double f = m_key->intrinsic.f;
+	double f1 = 1.0 / f;
+	double* t = m_frame->pos.val;
+
 	int u, v, u2, v2, ik;
 
 	int offid[9] = { 
@@ -7531,8 +7544,10 @@ bool Slam::update_depth_lsd9() {
 	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
 	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
 
-	double* pi = m_key->plane;
+	//double* pi = m_key->plane;
 	double dpp[3], a[3], b, w;
+	double dg, id, l[3], dpi[3], ipi[3], npi[6], iu[2], n[3], x[3];
+
 
 
 	for (int i = 0; i < total; i++) {
@@ -7544,34 +7559,81 @@ bool Slam::update_depth_lsd9() {
 		b = 0;
 
 		for (int k = 0; k < 9; k++) {
+
 			u2 = u + offx[k];
 			v2 = v + offy[k];
 			ik = i + offid[k];
+
 			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[ik]) {
 
+				dg = pit[ik]*f1;
 
-				w = pw[ik] + 0.0001;
+				Vec3f& pi = ppp[ik];
+
+				x[0] = f1 * u2;
+				x[1] = f1 * v2;
+				x[2] = 1;
+
+				iu[0] = piu[ik];
+				iu[1] = piv[ik];
+
+				if (Config::use_i1_constraint) {
+					iu[0] += pwiu1[ik][0];
+					iu[1] += pwiu1[ik][1];
+				}
+
+				l[0] = iu[0];
+				l[1] = iu[1];
+				l[2] = -(x[0]*iu[0]+x[1]*iu[1]);
+
+				n[0] = sin(pi[0])*cos(pi[1]);
+				n[1] = sin(pi[0])*sin(pi[1]);
+				n[2] = cos(pi[0]);
+
+				npi[0] = cos(pi[0])*cos(pi[1]);
+				npi[1] = cos(pi[0])*sin(pi[1]);
+				npi[2] = -sin(pi[0]);
+				npi[3] = -sin(pi[0])*sin(pi[1]);
+				npi[4] = sin(pi[0])*cos(pi[1]);
+				npi[5] = 0;
+
+				id = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
+				dpi[0] = pi[2]*(x[0]*npi[0]+x[1]*npi[1]+x[2]*npi[2]);
+				dpi[1] = pi[2]*(x[0]*npi[3]+x[1]*npi[4]+x[2]*npi[5]);
+				dpi[2] = x[0]*n[0]+x[1]*n[1]+x[2]*n[2];
+
+				ipi[0] = id*dpi[0];
+				ipi[1] = id*dpi[1];
+				ipi[2] = id*dpi[2];
+
+				a[0] += dg*ipi[0];
+				a[1] += dg*ipi[1];
+				a[2] += dg*ipi[2];
+
+				b -= ipi[0]*ipi[0]+ipi[1]*ipi[1]+ipi[2]*ipi[2];
+
+				w = 0.1;// pw[ik] + 0.0001;
 				a[0] += w*(ppp[ik][0]-ppp[i][0]);
 				a[1] += w*(ppp[ik][1]-ppp[i][1]);
 				a[2] += w*(ppp[ik][2]-ppp[i][2]);
 				b += w;
 
-				w = pw2[ik] + 0.001;
-				a[0] += w*(pi[0]-ppp[i][0]);
-				a[1] += w*(pi[1]-ppp[i][1]);
-				a[2] += w*(pi[2]-ppp[i][2]);
-				b += w;
+				// w = pw2[ik] + 0.001;
+				// a[0] += w*(pi[0]-ppp[i][0]);
+				// a[1] += w*(pi[1]-ppp[i][1]);
+				// a[2] += w*(pi[2]-ppp[i][2]);
+				// b += w;
 
 			}
 		}
 
-		pdpp[i][0] = a[0] / b;
-		pdpp[i][1] = a[1] / b;
-		pdpp[i][2] = a[2] / b;
+		// pdpp[i][0] = a[0] / b;
+		// pdpp[i][1] = a[1] / b;
+		// pdpp[i][2] = a[2] / b;
 
-		// pdpp[i][0] = a[0]/(b+0.0001);
-		// pdpp[i][1] = a[1]/(b+0.0001);
-		// pdpp[i][2] = a[2]/(b+0.0001);
+		pdpp[i][0] = a[0]/(b+0.0001);
+		pdpp[i][1] = a[1]/(b+0.0001);
+		pdpp[i][2] = a[2]/(b+0.0001);
 	}
 
 	m_key->plane_pi->add(m_key->epi_line);

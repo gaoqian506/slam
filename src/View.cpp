@@ -5,7 +5,7 @@
 #include "SpaceToolbox.h"
 #include "MatrixToolbox.h"
 #include "Config.h"
-#include <GL/glut.h>
+#include <GL/freeglut.h>
 #include <iostream>
 #include <vector>
 #include <assert.h>
@@ -162,6 +162,9 @@ void View::keyboard(unsigned char key,int x,int y) {
 	double dist = 0.1;
 
 	switch(key) {
+	case 27:	// Esc
+		glutLeaveMainLoop();
+		break;			
 	case 48:	// '0'
 		m_display_aspect = DisplaySpace;
 		glutPostRedisplay();
@@ -244,7 +247,7 @@ void View::keyboard(unsigned char key,int x,int y) {
 	case '-':
 		Config::field_skip++;
 		glutPostRedisplay();		
-		break;				
+		break;	
 	case 'b':	// key for break
 		key = 'b';
 		break;
@@ -360,6 +363,8 @@ void View::special(int key,int x,int y) {
 void View::mouse(int button, int state, int x, int y) {
 
 	double dist = 0.25;
+	m_mouse_pos[0] = x;
+	m_mouse_pos[1] = y;	
 
 	switch(button) {
 
@@ -400,7 +405,7 @@ void View::mouse_move(int x, int y) {
 	int dx = x-m_mouse_pos[0];
 	int dy = y-m_mouse_pos[1];
 
-	if (m_display_aspect == DisplaySpace && abs(dx) < 20 && abs(dy) < 20) {
+	if (m_display_aspect == DisplaySpace/* && abs(dx) < 20 && abs(dy) < 20*/) {
 		Vec9d dR = SpaceToolbox::make_rotation(-dy*m_vpp, dx*m_vpp);
 		SpaceToolbox::rotate(m_view_matrix, dR);
 		if (m_mouse_button == 1) {

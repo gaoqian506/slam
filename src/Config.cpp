@@ -3,7 +3,7 @@
 namespace ww {
 
 
-	int Config::max_width = 120;
+	int Config::max_width = 240;
 	bool Config::manually_content = true;
 	//bool Config::epipolar_mode = true;
 	//Config::Method Config::method = Config::Entropy5;
@@ -45,11 +45,11 @@ namespace ww {
 	bool Config::use_wiu1_lsd6 = true;
 	double Config::iu0_lenth2_thresh_lsd6 = 0.1;
 
-	bool Config::smooth_input_image = false;
+	bool Config::smooth_input_image = true;
 	int Config::build_steps = 5;
 	int Config::build_iterations = 50;
 	double Config::mask_radio_thresh = 0.8;
-	bool Config::use_i1_constraint = true;
+	bool Config::use_i1_constraint = false;
 	double Config::default_depth = 0.1;
 	double Config::default_ddepth = 1;
 	Vec3d Config::default_camera_pos = Vec3d(0, 0, 0);
