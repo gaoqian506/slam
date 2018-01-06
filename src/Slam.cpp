@@ -7257,6 +7257,7 @@ void Slam::prepare_dr_lsd9() {
 		m[0] = in1.f*x1[0]+in1.cx;
 		m[1] = in1.f*x1[1]+in1.cy;
 
+
 		if (m[0] >= 0 && m[0] < m_width-1 && m[1] >= 0 & m[1] < m_height-1 ) {
 		
 			pm1[i] = 255;
@@ -7615,7 +7616,7 @@ bool Slam::update_depth_lsd9() {
 				b[2] += dg*ipi[2];
 				a += ipi[0]*ipi[0]+ipi[1]*ipi[1]+ipi[2]*ipi[2];
 
-				w = 0.1;// pw[ik] + 0.0001;
+				w = 0.005;// pw[ik] + 0.0001;
 				b[0] -= w*(ppp[ik][0]-ppp[i][0]);
 				b[1] -= w*(ppp[ik][1]-ppp[i][1]);
 				b[2] -= w*(ppp[ik][2]-ppp[i][2]);
