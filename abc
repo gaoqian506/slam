@@ -1,6 +1,23 @@
 
 
 
+NAME = test
+
+$(NAME).pdf $(NAME).dvi: $(NAME).tex
+	latex (NAME).
+
+
+
+TARGETS = test.pdf test.dvi
+
+all: $(TARGETS)
+
+
+
+test.dvi:
+	latex test.tex
+
+
 			// if (u == 157 && v == 125) {
 			// 	std::cout <<"d:"<<d<<" m:"<<u+m[0]<<" "<<v+m[1]<<" wi1:"<<pwi1[i]<<std::endl;	
 			// }
