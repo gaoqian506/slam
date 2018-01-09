@@ -7532,12 +7532,14 @@ bool Slam::update_depth_lsd9() {
 
 	float* piu = (float*)m_key->gradient[0]->data();
 	float* piv = (float*)m_key->gradient[1]->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pd2 = (float*)m_key->depth2->data();		
 	Intrinsic in = m_key->intrinsic;
 	double f1 = 1.0 / in.f;	
 
 	double* plane = m_key->plane;
 	double* t = m_frame->pos.val;
-	double w1, w2, wsum, sid, l[3];
+	double w1, w2, wsum, sid, l[3], d, n[3], x[2];
 	Vec3f pi;
 	int u, v;
 
@@ -7545,23 +7547,31 @@ bool Slam::update_depth_lsd9() {
 
 		if (!pm[i]) { continue; }
 
-		u = i % m_width - in.cx;
-		v = i / m_width - in.cy;
+		x[0] = (i % m_width - in.cx)*f1;
+		x[1] = (i / m_width - in.cy)*f1;
+
 
 		l[0] = piu[i];
 		l[1] = piv[i];
-		l[2] = -(f1*u*l[0]+f1*v*l[1]);
+		l[2] = -(x[0]*l[0]+x[1]*l[1]);
 		sid = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
 		if (sid < 0) { sid = -sid; }
 
-		w1 = pdw[i]*pw[i];
+		w1 = pdw[i];//*pw[i];
 		w2 = pw2[i]*sid*0.1;		// average depth = 0.1
 		wsum = w1+w2;
 
 		if (wsum != 0) {
 			pi.val[0] = (w1*ppp[i][0]+w2*plane[0])/wsum;
 			pi.val[1] = (w1*ppp[i][1]+w2*plane[1])/wsum;
-			pi.val[2] = (w1*ppp[i][2]+w2*plane[2])/wsum;
+			//pi.val[2] = (w1*ppp[i][2]+w2*plane[2])/wsum;
+
+			n[0] = sin(pi.val[0])*cos(pi.val[1]);
+			n[1] = sin(pi.val[0])*sin(pi.val[1]);
+			n[2] = cos(pi.val[0]);
+
+			d = (w1*pd[i]+w2*pd2[i])/wsum;
+			pi.val[2] = d / (x[0]*n[0]+x[1]*n[1]+1*n[2]);
 
 			ppp[i] = pi;
 			pdw[i] = wsum;			
