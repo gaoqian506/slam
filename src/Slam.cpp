@@ -7362,6 +7362,9 @@ bool Slam::calc_dr_lsd9() {
 	double* t = m_frame->pos.val;
 	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
 	Vec2f* pwiu2 = (Vec2f*)m_key->warp_gradient2->data();
+	//*******************************************
+	float* pdw = (float*)m_key->depth_weight->data();
+	//***********************************************
 
 	double w, w2, dg, d, l[3], x[3], A[81], B[9], a[9], iu[2], iul, ww[2];
 	double* pi = m_key->plane, id, dpi[3];
@@ -7395,7 +7398,7 @@ bool Slam::calc_dr_lsd9() {
 			iu[1] += pwiu1[i][1];
 		}
 
-		w = pw[i];
+		w = pw[i]*pdw[i];
 		//w =1 ;
 
 		x[0] = f1 * u;
@@ -7412,12 +7415,12 @@ bool Slam::calc_dr_lsd9() {
 		a[4] = x[2]*l[0]-x[0]*l[2];
 		a[5] = x[0]*l[1]-x[1]*l[0];	
 
-		a[0] = 0;
-		a[1] = 0;
-		a[2] = 0;
-		a[3] = 0;
-		a[4] = 0;
-		a[5] = 0;		
+		// a[0] = 0;
+		// a[1] = 0;
+		// a[2] = 0;
+		// a[3] = 0;
+		// a[4] = 0;
+		// a[5] = 0;		
 
 		for (int j = 0; j < 36; j++) {
 			row = j / 6;
