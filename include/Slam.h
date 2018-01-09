@@ -153,7 +153,7 @@ private:
 	void prepare_dr_lsd9();
 	bool calc_dr_lsd9();
 	bool update_depth_lsd9();
-	//void smooth_depth_lsd8();	
+	bool smooth_depth_lsd9();
 
 
 	VideoSource* m_source;

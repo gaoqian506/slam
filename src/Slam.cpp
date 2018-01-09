@@ -7149,12 +7149,17 @@ void Slam::build_lsd9(BuildFlag flag) {
 			) { break; }
 			times++;
 		}
-		/*		
-		while(flag & BuildTranslate) {
-			ok = calc_t_of3();
-			if (!(flag & BuildIterate) || ok) { break; }
+
+		times = 0;						
+		while(flag & BuildDepth) {
+			ok = smooth_depth_lsd9();
+			prepare_dr_lsd9();
+			if (!(flag & BuildIterate) || ok || 
+				times >= Config::build_iterations
+			) { break; }
+			times++;
 		}
-		*/
+		
 		// if (flag & BuildDepth) {
 		// 	update_depth_lsd8();
 		// 	smooth_depth_lsd8();
@@ -7583,6 +7588,86 @@ bool Slam::update_depth_lsd9() {
 	}
 
 	return true;
+}
+
+bool Slam::smooth_depth_lsd9() {
+
+
+	std::cout << "Slam::smooth_depth_lsd9" << std::endl;
+
+	if (!m_key || !m_frame) { return false; }
+
+	int total = m_width * m_height;
+
+	unsigned char* pm = (unsigned char*)m_key->mask->data();
+	float* pg = (float*)m_key->gray->data();
+	float* pdw = (float*)m_key->depth_weight->data();
+	Vec3f* ppp = (Vec3f*)m_key->plane_pi->data();
+
+
+	 int u, v, u2, v2, ik, count;
+
+	int offid[9] = { 
+		-m_width-1, -m_width, -m_width+1,
+		-1, 0, 1,
+		m_width-1, m_width, m_width+1
+	};
+	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
+	double dg, w, wsum;
+	Vec3f pi;
+
+	for (int i = 0; i < total; i++) {
+
+		u = i % m_width;
+		v = i / m_width;
+
+		pi.val[0] = 0;
+		pi.val[1] = 0;
+		pi.val[2] = 0;
+		wsum = 0;
+		count = 0;
+
+		// a = 0;
+		// memset(b, 0, sizeof(b));
+
+		for (int k = 0; k < 9; k++) {
+
+			u2 = u + offx[k];
+			v2 = v + offy[k];
+			ik = i + offid[k];
+
+			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[ik]) {
+
+				count++;
+				dg = pg[ik]-pg[i];
+				w = exp(-dg*dg*400)*pdw[ik]; 	// sigma = 0.05
+
+				pi.val[0] += w*ppp[ik][0];
+				pi.val[1] += w*ppp[ik][1];
+				pi.val[2] += w*ppp[ik][2];
+				wsum += w;
+
+
+			}
+			************************
+			if (wsum != 0) {
+				pi.val[0] = pi.val[0]/wsum;
+				pi.val[1] = pi.val[1]/wsum;
+				pi.val[2] = pi.val[2]/wsum;
+
+				ppp[i] = pi;
+				pdw[i] = wsum/count;
+			}
+
+		}
+
+	}
+
+	// is ok?
+	return true;
+
 }
 
 
