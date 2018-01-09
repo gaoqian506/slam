@@ -7651,17 +7651,16 @@ bool Slam::smooth_depth_lsd9() {
 
 
 			}
-			************************
-			if (wsum != 0) {
-				pi.val[0] = pi.val[0]/wsum;
-				pi.val[1] = pi.val[1]/wsum;
-				pi.val[2] = pi.val[2]/wsum;
-
-				ppp[i] = pi;
-				pdw[i] = wsum/count;
-			}
-
 		}
+
+		if (wsum != 0) {
+			pi.val[0] = pi.val[0]/wsum;
+			pi.val[1] = pi.val[1]/wsum;
+			pi.val[2] = pi.val[2]/wsum;
+
+			ppp[i] = pi;
+			pdw[i] = wsum/count;
+		}		
 
 	}
 
