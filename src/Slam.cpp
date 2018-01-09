@@ -7362,9 +7362,7 @@ bool Slam::calc_dr_lsd9() {
 	double* t = m_frame->pos.val;
 	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
 	Vec2f* pwiu2 = (Vec2f*)m_key->warp_gradient2->data();
-	//*******************************************
 	float* pdw = (float*)m_key->depth_weight->data();
-	//***********************************************
 
 	double w, w2, dg, d, l[3], x[3], A[81], B[9], a[9], iu[2], iul, ww[2];
 	double* pi = m_key->plane, id, dpi[3];
@@ -7528,125 +7526,53 @@ bool Slam::update_depth_lsd9() {
 
 	unsigned char* pm = (unsigned char*)m_key->mask->data();
 	Vec3f* ppp = (Vec3f*)m_key->plane_pi->data();
-	Vec3f* pdpp = (Vec3f*)m_key->epi_line->data();
 	float* pw = (float*)m_key->of_weight->data();
 	float* pw2 = (float*)m_key->epi_weight->data();
+	float* pdw = (float*)m_key->depth_weight->data();
 
-	float* pit = (float*)m_key->residual->data();
 	float* piu = (float*)m_key->gradient[0]->data();
 	float* piv = (float*)m_key->gradient[1]->data();
-	Vec2f* pwiu1 = (Vec2f*)m_key->warp_gradient->data();
-	//Vec2f* pwiu2 = (Vec2f*)m_key->warp_gradient2->data();
-	//Vec4f* px = (Vec4f*)m_key->points->data();
-	double f = m_key->intrinsic.f;
-	double f1 = 1.0 / f;
+	Intrinsic in = m_key->intrinsic;
+	double f1 = 1.0 / in.f;	
+
+	double* plane = m_key->plane;
 	double* t = m_frame->pos.val;
-
-	int u, v, u2, v2, ik;
-
-	int offid[9] = { 
-		-m_width-1, -m_width, -m_width+1,
-		-1, 0, 1,
-		m_width-1, m_width, m_width+1
-	};
-	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
-	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
-
-	//double* pi = m_key->plane;
-	double dpp[3], a, b[3], w;
-	double dg, id, l[3], dpi[3], ipi[3], npi[6], iu[2], n[3], x[3];
-
-
+	double w1, w2, wsum, sid, l[3];
+	Vec3f pi;
+	int u, v;
 
 	for (int i = 0; i < total; i++) {
 
-		u = i % m_width;
-		v = i / m_width;
+		if (!pm[i]) { continue; }
 
-		a = 0;
-		memset(b, 0, sizeof(b));
+		u = i % m_width - in.cx;
+		v = i / m_width - in.cy;
 
-		for (int k = 0; k < 9; k++) {
+		l[0] = piu[i];
+		l[1] = piv[i];
+		l[2] = -(f1*u*l[0]+f1*v*l[1]);
+		sid = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
+		if (sid < 0) { sid = -sid; }
 
-			u2 = u + offx[k];
-			v2 = v + offy[k];
-			ik = i + offid[k];
+		w1 = pdw[i]*pw[i];
+		w2 = pw2[i]*sid*0.1;		// average depth = 0.1
+		wsum = w1+w2;
 
-			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[ik]) {
+		if (wsum != 0) {
+			pi.val[0] = (w1*ppp[i][0]+w2*plane[0])/wsum;
+			pi.val[1] = (w1*ppp[i][1]+w2*plane[1])/wsum;
+			pi.val[2] = (w1*ppp[i][2]+w2*plane[2])/wsum;
 
-				dg = pit[ik]*f1;
-
-				Vec3f& pi = ppp[ik];
-
-				x[0] = f1 * u2;
-				x[1] = f1 * v2;
-				x[2] = 1;
-
-				iu[0] = piu[ik];
-				iu[1] = piv[ik];
-
-				if (Config::use_i1_constraint) {
-					iu[0] += pwiu1[ik][0];
-					iu[1] += pwiu1[ik][1];
-				}
-
-				l[0] = iu[0];
-				l[1] = iu[1];
-				l[2] = -(x[0]*iu[0]+x[1]*iu[1]);
-
-				n[0] = sin(pi[0])*cos(pi[1]);
-				n[1] = sin(pi[0])*sin(pi[1]);
-				n[2] = cos(pi[0]);
-
-				npi[0] = cos(pi[0])*cos(pi[1]);
-				npi[1] = cos(pi[0])*sin(pi[1]);
-				npi[2] = -sin(pi[0]);
-				npi[3] = -sin(pi[0])*sin(pi[1]);
-				npi[4] = sin(pi[0])*cos(pi[1]);
-				npi[5] = 0;
-
-				id = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
-				dpi[0] = pi[2]*(x[0]*npi[0]+x[1]*npi[1]+x[2]*npi[2]);
-				dpi[1] = pi[2]*(x[0]*npi[3]+x[1]*npi[4]+x[2]*npi[5]);
-				dpi[2] = x[0]*n[0]+x[1]*n[1]+x[2]*n[2];
-
-				ipi[0] = id*dpi[0];
-				ipi[1] = id*dpi[1];
-				ipi[2] = id*dpi[2];
-
-				b[0] += dg*ipi[0];
-				b[1] += dg*ipi[1];
-				b[2] += dg*ipi[2];
-				a += ipi[0]*ipi[0]+ipi[1]*ipi[1]+ipi[2]*ipi[2];
-
-				w = 0.01;// pw[ik] + 0.0001;
-				b[0] -= w*(ppp[ik][0]-ppp[i][0]);
-				b[1] -= w*(ppp[ik][1]-ppp[i][1]);
-				b[2] -= w*(ppp[ik][2]-ppp[i][2]);
-				a += w;
-
-				// w = pw2[ik] + 0.001;
-				// a[0] += w*(pi[0]-ppp[i][0]);
-				// a[1] += w*(pi[1]-ppp[i][1]);
-				// a[2] += w*(pi[2]-ppp[i][2]);
-				// b += w;
-
-			}
+			ppp[i] = pi;
+			pdw[i] = wsum;			
 		}
 
-		// pdpp[i][0] = a[0] / b;
-		// pdpp[i][1] = a[1] / b;
-		// pdpp[i][2] = a[2] / b;
 
-		pdpp[i][0] = -b[0]/(a+0.0001);
-		pdpp[i][1] = -b[1]/(a+0.0001);
-		pdpp[i][2] = -b[2]/(a+0.0001);
+
+
 	}
 
-	m_key->plane_pi->add(m_key->epi_line);
-
-	//return is ok?
-	return false;
+	return true;
 }
 
 

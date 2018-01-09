@@ -58,5 +58,5 @@ namespace ww {
 	bool Config::image_switch_list[128] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  };
 	double Config::min_gradient_length2 = 0.005;
 	Vec3f Config::default_depth_plane = Vec3f(0, 0, 0.1);
-	double Config::default_depth_weight = 0;
+	double Config::default_depth_weight = 0.001;
 }
