@@ -3202,6 +3202,7 @@ void Slam::create_keyframe(Image* image) {
 	m_key->depth = new CvImage(m_width, m_height, Image::Float32);
 	m_key->depth2 = new CvImage(m_width, m_height, Image::Float32);
 	m_key->depth_weight = new CvImage(m_width, m_height, Image::Float32);
+	m_key->ddepth_weight = new CvImage(m_width, m_height, Image::Float32);
 
 	m_key->mask = new CvImage(m_width, m_height, Image::UByte);
 	m_key->mask2 = new CvImage(m_width, m_height, Image::UByte);
@@ -3222,6 +3223,7 @@ void Slam::create_keyframe(Image* image) {
 	m_key->plane_pi = new CvImage(m_width, m_height, Image::Float32, 3);
 	m_key->depth->set(Config::default_depth);
 	m_key->depth_weight->set(Config::default_depth_weight);
+
 
 	m_key->plane[0] = Config::default_depth_plane[0];
 	m_key->plane[1] = Config::default_depth_plane[1];
@@ -7534,12 +7536,18 @@ bool Slam::update_depth_lsd9() {
 	float* pdw = (float*)m_key->depth_weight->data();
 	Vec3f* ppp = (Vec3f*)m_key->plane_pi->data();
 	Vec3f* pdpp = (Vec3f*)m_key->epi_line->data();
+	float* pw = (float*)m_key->of_weight->data();
 	float* pw2 = (float*)m_key->epi_weight->data();
 	float* pd = (float*)m_key->depth->data();
-	float* pd2 = (float*)m_key->depth2->data();		
+	float* pd2 = (float*)m_key->depth2->data();
+
+	float* piu = (float*)m_key->gradient[0]->data();
+	float* piv = (float*)m_key->gradient[1]->data();
+	float* pit = (float*)m_key->residual->data();
 
 	Intrinsic in = m_key->intrinsic;
 	double f1 = 1.0 / in.f;	
+	double* t = m_frame->pos.val;
 
 	 int u, v, u2, v2, ik;
 
@@ -7551,18 +7559,21 @@ bool Slam::update_depth_lsd9() {
 	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
 	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
 
-	double dg, w0, w, wsum, n[3], nt[3][2], x[3], g0, d0, d;
+	double dg, w1, w2, w, wsum, n[3], nt[3][2], x[3], g0, d0, d;
 	Vec3f pi, dpi;
-	double a, b[3], xpi, xpit[3];
+	double a, b[3], xpi, xpit[3], maxw, id, l[3], wid, dtheta[3], itheta[3], it;
 
 	for (int i = 0; i < total; i++) {
+
+		memset(dpi.val, 0, sizeof(dpi.val));
+		pdpp[i] = dpi;
+
+		if (!pm[i]) { continue; }
 
 		u = i % m_width;
 		v = i / m_width;
 
-		memset(dpi.val, 0, sizeof(dpi.val));
-		pdpp[i] = dpi;
-		wsum = 0;
+		//wsum = 0;
 		pi = ppp[i];
 
 		n[0] = sin(pi.val[0])*cos(pi.val[1]);
@@ -7576,12 +7587,11 @@ bool Slam::update_depth_lsd9() {
 		nt[2][0] = -sin(pi.val[0]);
 		nt[2][1] = 0;
 
-		w0 = pdw[i];
 		g0 = pg[i];
-		d0 = pd[i];
 
 		a = 0;
 		memset(b, 0, sizeof(b));
+		//maxw = 0;
 
 		for (int k = 0; k < 9; k++) {
 
@@ -7595,29 +7605,66 @@ bool Slam::update_depth_lsd9() {
 				x[1] = (v2-in.cy)*f1;
 				x[2] = 1;
 
-				dg = pg[ik]-g0;
-				w = exp(-dg*dg*400)*pw2[ik];
-				wsum = w0+w;
-				d = (w0*d0+w*pd2[ik])/wsum;
+				l[0] = piu[ik];
+				l[1] = piv[ik];
+				l[2] = -(x[0]*l[0]+x[1]*l[1]);
 
-				xpi = x[0]*n[0]+x[1]*n[1]+x[2]*n[2]-d/pi[2];
+				id = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
+				wid = id < 0 ? -id : id;
+
+				w1 = (pw[ik]+0.0001);
+				w2 = wid*pw2[ik]*(1-w1);
+				wsum = w1+w2;
+				d = (w1*pd[ik]+w2*pd2[ik])/(wsum);
+
+				dg = pg[ik]-g0;
+				w = exp(-dg*dg*400)*wsum;
+
+				xpi = x[0]*n[0]+x[1]*n[1]+x[2]*n[2]-d/pi.val[2];
 				xpit[0] = x[0]*nt[0][0]+x[1]*nt[1][0]+x[2]*nt[2][0];
 				xpit[1] = x[0]*nt[0][1]+x[1]*nt[1][1]+x[2]*nt[2][1];
-				xpit[2] = d/pi[2]/pi[2];
+				xpit[2] = d/pi.val[2]/pi.val[2];
 
-				b[0] += wsum*xpi*xpit[0];
-				b[1] += wsum*xpi*xpit[1];
-				b[2] += wsum*xpi*xpit[2];
+				// b[0] += w*xpi*xpit[0];
+				// b[1] += w*xpi*xpit[1];
+				// b[2] += w*xpi*xpit[2];
 
-				a += wsum*(xpit[0]*xpit[0]+xpit[1]*xpit[1]+xpit[2]*xpit[2]);
+				// a += w*(xpit[0]*xpit[0]+xpit[1]*xpit[1]+xpit[2]*xpit[2]);
+
+				dtheta[0] = pi.val[2]*xpit[0];
+				dtheta[1] = pi.val[2]*xpit[1];
+				dtheta[2] = x[0]*n[0]+x[1]*n[1]+x[2]*n[2];
+
+				it = pit[ik]*f1;
+
+				itheta[0] = id*dtheta[0];
+				itheta[1] = id*dtheta[1];
+				itheta[2] = id*dtheta[2];
+
+				b[0] += w1*it*itheta[0];
+				b[1] += w1*it*itheta[1];
+				b[2] += w1*it*itheta[2];
+
+				a += w1*(itheta[0]*itheta[0]+itheta[1]*itheta[1]+itheta[2]*itheta[2]);
+
+
+
+				// if (u == u2 && v == v2) {
+				// 	dtheta[0] = pi.val[2]*(x[0])	
+				// }
+				
+
+
+				//if (wsum > maxw) { maxw = wsum; }
 			}
 		}
 
-		dpi[0] = -b[0]/a;
-		dpi[1] = -b[1]/a;
-		dpi[2] = -b[2]/a;
+		dpi.val[0] = -b[0]/a;
+		dpi.val[1] = -b[1]/a;
+		dpi.val[2] = -b[2]/a;
 
 		pdpp[i] = dpi;
+		//pdw[i] = maxw;
 
 	}
 

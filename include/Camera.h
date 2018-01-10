@@ -62,6 +62,7 @@ public:
 	Image* points;
 	Image* epi_line;
 	Image* depth_weight;
+	Image* ddepth_weight;
 
 	Image* mask;
 	Image* mask2;
