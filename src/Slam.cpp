@@ -7523,77 +7523,7 @@ bool Slam::calc_dr_lsd9() {
 }
 bool Slam::update_depth_lsd9() {
 
-	std::cout << "Slam::smooth_depth_lsd8" << std::endl;
-
-	if (!m_key || !m_frame) { return false; }
-
-	int total = m_width * m_height;
-
-	unsigned char* pm = (unsigned char*)m_key->mask->data();
-	Vec3f* ppp = (Vec3f*)m_key->plane_pi->data();
-	float* pw = (float*)m_key->of_weight->data();
-	float* pw2 = (float*)m_key->epi_weight->data();
-	float* pdw = (float*)m_key->depth_weight->data();
-
-	float* piu = (float*)m_key->gradient[0]->data();
-	float* piv = (float*)m_key->gradient[1]->data();
-	float* pd = (float*)m_key->depth->data();
-	float* pd2 = (float*)m_key->depth2->data();		
-	Intrinsic in = m_key->intrinsic;
-	double f1 = 1.0 / in.f;	
-
-	double* plane = m_key->plane;
-	double* t = m_frame->pos.val;
-	double w1, w2, wsum, sid, l[3], d, n[3], x[2];
-	Vec3f pi;
-	int u, v;
-
-	for (int i = 0; i < total; i++) {
-
-		if (!pm[i]) { continue; }
-
-		x[0] = (i % m_width - in.cx)*f1;
-		x[1] = (i / m_width - in.cy)*f1;
-
-
-		l[0] = piu[i];
-		l[1] = piv[i];
-		l[2] = -(x[0]*l[0]+x[1]*l[1]);
-		sid = l[0]*t[0]+l[1]*t[1]+l[2]*t[2];
-		if (sid < 0) { sid = -sid; }
-
-		w1 = pdw[i];//*pw[i];
-		w2 = pw2[i]*sid*0.1;		// average depth = 0.1
-		wsum = w1+w2;
-
-		if (wsum != 0) {
-			pi.val[0] = (w1*ppp[i][0]+w2*plane[0])/wsum;
-			pi.val[1] = (w1*ppp[i][1]+w2*plane[1])/wsum;
-			//pi.val[2] = (w1*ppp[i][2]+w2*plane[2])/wsum;
-
-			n[0] = sin(pi.val[0])*cos(pi.val[1]);
-			n[1] = sin(pi.val[0])*sin(pi.val[1]);
-			n[2] = cos(pi.val[0]);
-
-			d = (w1*pd[i]+w2*pd2[i])/wsum;
-			pi.val[2] = d / (x[0]*n[0]+x[1]*n[1]+1*n[2]);
-
-			ppp[i] = pi;
-			pdw[i] = wsum;			
-		}
-
-
-
-
-	}
-
-	return true;
-}
-
-bool Slam::smooth_depth_lsd9() {
-
-
-	std::cout << "Slam::smooth_depth_lsd9" << std::endl;
+	std::cout << "Slam::update_depth_lsd9" << std::endl;
 
 	if (!m_key || !m_frame) { return false; }
 
@@ -7603,9 +7533,15 @@ bool Slam::smooth_depth_lsd9() {
 	float* pg = (float*)m_key->gray->data();
 	float* pdw = (float*)m_key->depth_weight->data();
 	Vec3f* ppp = (Vec3f*)m_key->plane_pi->data();
+	Vec3f* pdpp = (Vec3f*)m_key->epi_line->data();
+	float* pw2 = (float*)m_key->epi_weight->data();
+	float* pd = (float*)m_key->depth->data();
+	float* pd2 = (float*)m_key->depth2->data();		
 
+	Intrinsic in = m_key->intrinsic;
+	double f1 = 1.0 / in.f;	
 
-	 int u, v, u2, v2, ik, count;
+	 int u, v, u2, v2, ik;
 
 	int offid[9] = { 
 		-m_width-1, -m_width, -m_width+1,
@@ -7615,22 +7551,37 @@ bool Slam::smooth_depth_lsd9() {
 	int offx[9] = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
 	int offy[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
 
-	double dg, w, wsum;
-	Vec3f pi;
+	double dg, w0, w, wsum, n[3], nt[3][2], x[3], g0, d0, d;
+	Vec3f pi, dpi;
+	double a, b[3], xpi, xpit[3];
 
 	for (int i = 0; i < total; i++) {
 
 		u = i % m_width;
 		v = i / m_width;
 
-		pi.val[0] = 0;
-		pi.val[1] = 0;
-		pi.val[2] = 0;
+		memset(dpi.val, 0, sizeof(dpi.val));
+		pdpp[i] = dpi;
 		wsum = 0;
-		count = 0;
+		pi = ppp[i];
 
-		// a = 0;
-		// memset(b, 0, sizeof(b));
+		n[0] = sin(pi.val[0])*cos(pi.val[1]);
+		n[1] = sin(pi.val[0])*sin(pi.val[1]);
+		n[2] = cos(pi.val[0]);
+
+		nt[0][0] = cos(pi.val[0])*cos(pi.val[1]);
+		nt[0][1] = -cos(pi.val[0])*sin(pi.val[1]);
+		nt[1][0] = cos(pi.val[0])*sin(pi.val[1]);
+		nt[1][1] = cos(pi.val[0])*cos(pi.val[1]);
+		nt[2][0] = -sin(pi.val[0]);
+		nt[2][1] = 0;
+
+		w0 = pdw[i];
+		g0 = pg[i];
+		d0 = pd[i];
+
+		a = 0;
+		memset(b, 0, sizeof(b));
 
 		for (int k = 0; k < 9; k++) {
 
@@ -7640,29 +7591,45 @@ bool Slam::smooth_depth_lsd9() {
 
 			if (u2 >= 0 && u2 < m_width && v2 >= 0 && v2 < m_height && pm[ik]) {
 
-				count++;
-				dg = pg[ik]-pg[i];
-				w = exp(-dg*dg*400)*pdw[ik]; 	// sigma = 0.05
+				x[0] = (u2-in.cx)*f1;
+				x[1] = (v2-in.cy)*f1;
+				x[2] = 1;
 
-				pi.val[0] += w*ppp[ik][0];
-				pi.val[1] += w*ppp[ik][1];
-				pi.val[2] += w*ppp[ik][2];
-				wsum += w;
+				dg = pg[ik]-g0;
+				w = exp(-dg*dg*400)*pw2[ik];
+				wsum = w0+w;
+				d = (w0*d0+w*pd2[ik])/wsum;
 
+				xpi = x[0]*n[0]+x[1]*n[1]+x[2]*n[2]-d/pi[2];
+				xpit[0] = x[0]*nt[0][0]+x[1]*nt[1][0]+x[2]*nt[2][0];
+				xpit[1] = x[0]*nt[0][1]+x[1]*nt[1][1]+x[2]*nt[2][1];
+				xpit[2] = d/pi[2]/pi[2];
 
+				b[0] += wsum*xpi*xpit[0];
+				b[1] += wsum*xpi*xpit[1];
+				b[2] += wsum*xpi*xpit[2];
+
+				a += wsum*(xpit[0]*xpit[0]+xpit[1]*xpit[1]+xpit[2]*xpit[2]);
 			}
 		}
 
-		if (wsum != 0) {
-			pi.val[0] = pi.val[0]/wsum;
-			pi.val[1] = pi.val[1]/wsum;
-			pi.val[2] = pi.val[2]/wsum;
+		dpi[0] = -b[0]/a;
+		dpi[1] = -b[1]/a;
+		dpi[2] = -b[2]/a;
 
-			ppp[i] = pi;
-			pdw[i] = wsum/count;
-		}		
+		pdpp[i] = dpi;
 
 	}
+
+	m_key->plane_pi->add(m_key->epi_line);
+
+	// is ok?
+	return true;
+}
+
+bool Slam::smooth_depth_lsd9() {
+
+	std::cout << "Slam::smooth_depth_lsd9" << std::endl;
 
 	// is ok?
 	return true;
